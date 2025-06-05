@@ -1,11 +1,11 @@
 import glob
 import os
-from dataclasses import dataclass, asdict # Import asdict
-from typing import Union, List, Dict # Import Dict for dictionary type hints
+from dataclasses import dataclass, asdict
+from typing import Union, List, Dict, Any, Optional
 
 @dataclass(frozen=True)
 class PamLimitEntry:
-    """Represents a single PAM limits configuration entry."""
+    """a PAM limits configuration entry."""
     file: str
     domain: str
     limit_type: str
@@ -16,7 +16,7 @@ class PamLimits:
     """
     Inspect and compare PAM limits config
 
-    Discovers and parses currently configured PAM limits.
+    Discovers and parses configured PAM limits.
     Can compare against a target configuration
     """
 
@@ -29,45 +29,60 @@ class PamLimits:
         Initialize PamLimits instance.
         Discovers and parses the system's PAM limits configuration files.
         """
-        self.config_file_paths = self._discover_config_files()
-        self.actual_limits_config: List[PamLimitEntry] = self._parse_all_config_files()
+        self.config_file_paths: List[str] = self._discover_config_files()
         
-        # These lists will hold dictionaries after comparison
-        self.matching_limits: List[Dict[str, Union[str, int]]] = []
-        self.missing_from_actual: List[Dict[str, Union[str, int]]] = []
-        self.extra_in_actual: List[Dict[str, Union[str, int]]] = []
+        # Internal storage - PamLimitEntry objects
+        self._actual_limits_data_internal: List[PamLimitEntry] = self._parse_all_config_files()
+        
+        self._matching_limits_internal: List[PamLimitEntry] = []
+        self._missing_from_actual_internal: List[PamLimitEntry] = []
+        self._extra_in_actual_internal: List[PamLimitEntry] = []
 
-    def compare_to(self, target_limits_data: List[PamLimitEntry]):
+    @property
+    def actual_limits_config(self) -> List[Dict[str, Any]]:
+        return [asdict(entry) for entry in self._actual_limits_data_internal]
+
+    @property
+    def matching_limits(self) -> List[Dict[str, Any]]:
+        return [asdict(entry) for entry in self._matching_limits_internal]
+
+    @property
+    def missing_from_actual(self) -> List[Dict[str, Any]]:
+        return [asdict(entry) for entry in self._missing_from_actual_internal]
+
+    @property
+    def extra_in_actual(self) -> List[Dict[str, Any]]:
         """
-        Compare PAM limits configuration with a provided target configuration.
-
-        Populates 'matching_limits', 'missing_from_actual', and 'extra_in_actual' lists
-        with dictionary representations of the limits.
-
-        Args:
-            target_limits_data (List[PamLimitEntry]): List of PamLimitEntry objects.
+        List of extra PAM limit entries in actual config as dictionaries.
         """
-        # Since PamLimitEntry is a frozen dataclass, it's hashable and comparable by value,
-        # so we can directly convert lists to sets for efficient comparison.
-        actual_limits_set = set(self.actual_limits_config)
-        target_limits_set = set(target_limits_data)
+        return [asdict(entry) for entry in self._extra_in_actual_internal]
+
+    def compare_to(self, target_limits_data_dicts: List[Dict[str, Any]]):
+        """
+        Compare PAM limits config with a target configuration.
+        Target config is a list of dicitonaries, resembling the PamLimitEntry.
+
+        Populates internal 'matching_limits', 'missing_from_actual', and 'extra_in_actual' lists.
+        """
+        target_limits_entries = self._convert_dicts_to_pam_limit_entries(target_limits_data_dicts)
+
+        actual_limits_set = set(self._actual_limits_data_internal)
+        target_limits_set = set(target_limits_entries)
 
         matching_set = actual_limits_set & target_limits_set
         missing_set = target_limits_set - actual_limits_set
         extra_set = actual_limits_set - target_limits_set
 
-        # Convert PamLimitEntry objects back to dictionaries before assigning
-        # to the public result attributes.
-        self.matching_limits = self._sort_limits_data_to_dicts(list(matching_set))
-        self.missing_from_actual = self._sort_limits_data_to_dicts(list(missing_set))
-        self.extra_in_actual = self._sort_limits_data_to_dicts(list(extra_set))
+        self._matching_limits_internal = self._sort_limits_data(list(matching_set))
+        self._missing_from_actual_internal = self._sort_limits_data(list(missing_set))
+        self._extra_in_actual_internal = self._sort_limits_data(list(extra_set))
 
     def _discover_config_files(self) -> List[str]:
         """
-        Discover all PAM limits configuration files on the system.
+        Discover PAM limits configuration files on the system.
 
         Returns:
-            list: List of absolute file paths to the discovered configuration files.
+            list: List of absolute file paths to configuration files.
         """
         found_files: List[str] = []
         if os.path.isfile(self.DEFAULT_LIMITS_CONF_PATH):
@@ -78,7 +93,7 @@ class PamLimits:
 
     def _parse_all_config_files(self) -> List[PamLimitEntry]:
         """
-        Parses all discovered PAM limits configuration files.
+        Parse discovered PAM limits configuration files.
 
         Returns:
             List[PamLimitEntry]: List of PamLimitEntry objects.
@@ -94,11 +109,6 @@ class PamLimits:
     def _parse_limits_entries(self, sanitized_lines: List[str], filename: str) -> List[PamLimitEntry]:
         """
         Parses PAM limits entries from a list of sanitized lines.
-
-        Args:
-            sanitized_lines (list): List of cleaned strings, each representing
-                                    a PAM limit rule.
-            filename (str): Name of the file from which these lines were read.
 
         Returns:
             List[PamLimitEntry]: List of PamLimitEntry objects.
@@ -116,7 +126,7 @@ class PamLimits:
             try:
                 value: Union[int, str] = int(raw_value)
             except ValueError:
-                value = raw_value  # Keep as string if not an integer
+                value = raw_value  
 
             parsed_entries.append(PamLimitEntry(
                 file=filename,
@@ -130,12 +140,6 @@ class PamLimits:
     def _cleanse_config_lines(self, config_lines: List[str]) -> List[str]:
         """
         Remove comments and empty lines from a list of raw configuration lines.
-
-        Args:
-            config_lines (list): List of raw strings read from a configuration file.
-
-        Returns:
-            list: List of strings without comments and empty lines.
         """
         clean_lines: List[str] = []
         for line in config_lines:
@@ -149,12 +153,6 @@ class PamLimits:
         """
         Reads lines from a config file.
 
-        Args:
-            path (str): The absolute path to the file.
-
-        Returns:
-            list: A list of strings, where each string is a line from the file.
-            
         Raises:
             IOError: If the file cannot be read.
         """
@@ -167,13 +165,7 @@ class PamLimits:
 
     def _sort_limits_data(self, limits_list: List[PamLimitEntry]) -> List[PamLimitEntry]:
         """
-        Sorts PAM limits list. This helper remains for internal sorting of PamLimitEntry objects.
-
-        Args:
-            limits_list (List[PamLimitEntry]): List of PamLimitEntry objects.
-
-        Returns:
-            List[PamLimitEntry]: The sorted list of PamLimitEntry objects.
+        Sorts PAM limits list.
         """
         return sorted(limits_list, key=lambda x: (
             x.file,
@@ -182,16 +174,29 @@ class PamLimits:
             x.limit_type
         ))
 
-    def _sort_limits_data_to_dicts(self, limits_list: List[PamLimitEntry]) -> List[Dict[str, Union[str, int]]]:
+    @staticmethod
+    def _convert_dicts_to_pam_limit_entries(data_dicts: List[Dict[str, Any]]) -> List[PamLimitEntry]:
         """
-        Sort PAM limits list.
-        Convert PamLimitEntry to dictionaries.
-
-        Args:
-            limits_list (List[PamLimitEntry]): List of PamLimitEntry objects.
-
-        Returns:
-            List[Dict[str, Union[str, int]]]: The sorted list of dictionaries.
+        Converts a list of dictionaries into a list of PamLimitEntry objects.
         """
-        sorted_entries = self._sort_limits_data(limits_list) 
-        return [asdict(entry) for entry in sorted_entries] 
+        converted_entries: List[PamLimitEntry] = []
+        for d in data_dicts:
+            try:
+                value: Union[int, str]
+                try:
+                    value = int(d['value'])
+                except (ValueError, TypeError): 
+                    value = str(d['value']) 
+
+                converted_entries.append(PamLimitEntry(
+                    file=d['file'],
+                    domain=d['domain'],
+                    limit_type=d['limit_type'],
+                    limit_item=d['limit_item'],
+                    value=value
+                ))
+            except KeyError as e:
+                print(f"WARNING: Dictionary is missing expected key for PamLimitEntry: {e}. Skipping entry: {d}")
+            except Exception as e:
+                print(f"WARNING: Could not convert dictionary to PamLimitEntry. Error: {e}. Skipping entry: {d}")
+        return converted_entries
