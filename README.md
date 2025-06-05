@@ -31,7 +31,6 @@ print("Unexpected in actual:", pam_limits.not_in_expected)
 ```BASH
 python3 -m venv Env
 source Env/bin/activate
-pip install -r requirements.txt
 ```
 
 Run tests:

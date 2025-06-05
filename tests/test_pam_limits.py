@@ -2,7 +2,6 @@ import unittest
 import tempfile
 import os
 import shutil
-from pyfakefs.fake_filesystem_unittest import TestCase
 from sysconfig_inspector.pam_limits import PamLimits
 
 def create_test_file(base_temp_dir: str, file_relative_path: str, contents: str = ""):
@@ -33,6 +32,7 @@ class BasePamLimitsTest(unittest.TestCase):
     def tearDown(self):
         """Clean up the temporary directory after each test"""
         shutil.rmtree(self.temp_dir)
+
 
 class TestPamLimits(BasePamLimitsTest):
     def test_init(self):
@@ -75,31 +75,29 @@ class TestPamLimits(BasePamLimitsTest):
         self.assertEqual(files, expected_output)
 
 
-class TestPamLimitsParser(TestCase):
+class TestPamLimitsParser(BasePamLimitsTest):
     """Test Parser functionality of class"""
-    def setUp(self):
-        self.setUpPyfakefs()  
-
     def test_read_limits_config(self):
-        self.fs.create_file('/etc/security/limits.conf', contents="""
+        limits_config = create_test_file(self.temp_dir, '/etc/security/limits.conf', contents="""
             # Comment line
             * soft core 0
             @admin hard nofile 10240
         """)
 
-        pam_limits = PamLimits()
+        pam_limits = PamLimits(limits_conf_path=limits_config,
+                               limits_d_path=self.temp_limits_d_path_pattern)
         pam_limits.actual_limits_config
 
         expected = [
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "*",
                 "limit_type": "soft",
                 "limit_item": "core",
                 "value": 0,
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "@admin",
                 "limit_type": "hard",
                 "limit_item": "nofile",
@@ -109,14 +107,14 @@ class TestPamLimitsParser(TestCase):
         self.assertEqual(pam_limits.actual_limits_config, expected)
 
     def test_read_multiple_configs(self):
-        self.fs.create_file(
+        supplementary_limits_config = create_test_file(self.temp_dir,
             '/etc/security/limits.d/10-test.conf', 
             contents="""
                 # Comment line
                 * soft core 0
                 @admin hard nofile 10240
             """)
-        self.fs.create_file(
+        limits_config = create_test_file(self.temp_dir,
             '/etc/security/limits.conf', 
             contents="""
                 *               soft    core            0
@@ -133,103 +131,104 @@ class TestPamLimitsParser(TestCase):
                 600:700         hard    locks           10
             """)
 
-        pam_limits = PamLimits()
+        pam_limits = PamLimits(limits_conf_path=limits_config,
+                               limits_d_path=self.temp_limits_d_path_pattern)
         actual_config = pam_limits.actual_limits_config
 
         expected_output = [
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "*",
                 "limit_type": "soft",
                 "limit_item": "core",
                 "value": 0
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "root",
                 "limit_type": "hard",
                 "limit_item": "core",
                 "value": 100000
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "*",
                 "limit_type": "hard",
                 "limit_item": "nofile",
                 "value": 512
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "@student",
                 "limit_type": "hard",
                 "limit_item": "nproc",
                 "value": 20
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "@faculty",
                 "limit_type": "soft",
                 "limit_item": "nproc",
                 "value": 20
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "@faculty",
                 "limit_type": "hard",
                 "limit_item": "nproc",
                 "value": 50
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "ftp",
                 "limit_type": "hard",
                 "limit_item": "nproc",
                 "value": 0
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "@student",
                 "limit_type": "-",
                 "limit_item": "maxlogins",
                 "value": 4
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "@student",
                 "limit_type": "-",
                 "limit_item": "nonewprivs",
                 "value": 1
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": ":123",
                 "limit_type": "hard",
                 "limit_item": "cpu",
                 "value": 5000
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "@500:",
                 "limit_type": "soft",
                 "limit_item": "cpu",
                 "value": 10000
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "600:700",
                 "limit_type": "hard",
                 "limit_item": "locks",
                 "value": 10
             },
             {
-                "file": "/etc/security/limits.d/10-test.conf",
+                "file": supplementary_limits_config,
                 "domain": "*",
                 "limit_type": "soft",
                 "limit_item": "core",
                 "value": 0,
             },
             {
-                "file": "/etc/security/limits.d/10-test.conf",
+                "file": supplementary_limits_config,
                 "domain": "@admin",
                 "limit_type": "hard",
                 "limit_item": "nofile",
@@ -240,12 +239,9 @@ class TestPamLimitsParser(TestCase):
         self.assertEqual(actual_config, expected_output)
 
 
-class TestLimitsComparator(TestCase):
-    def setUp(self):
-        self.setUpPyfakefs()  
-
+class TestLimitsComparator(BasePamLimitsTest):
     def test_limits_compare_to(self):
-        self.fs.create_file(
+        limits_config = create_test_file(self.temp_dir,
             '/etc/security/limits.conf', 
             contents="""
                 # Comment line
@@ -255,14 +251,14 @@ class TestLimitsComparator(TestCase):
 
         external_pam_limits = [
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "*",
                 "limit_type": "soft",
                 "limit_item": "core",
                 "value": 0,
             },
             {
-                "file": "/etc/security/limits.conf",
+                "file": limits_config,
                 "domain": "@admin",
                 "limit_type": "hard",
                 "limit_item": "nofile",
@@ -270,7 +266,8 @@ class TestLimitsComparator(TestCase):
             }
         ]
 
-        pam_limits = PamLimits()
+        pam_limits = PamLimits(limits_conf_path=self.temp_limits_conf_path,
+                               limits_d_path=self.temp_limits_d_path_pattern)
         pam_limits.compare_to(external_pam_limits)
 
         self.assertEqual(pam_limits.matching_limits, external_pam_limits)
