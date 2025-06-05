@@ -16,17 +16,17 @@ class TestPamLimits(TestCase):
         self.fs.create_file('/etc/security/limits.conf')
 
         pam_limits = PamLimits()
-        files = pam_limits.limits_config_files
+        files = pam_limits.config_file_paths
 
         self.assertEqual(files, ['/etc/security/limits.conf'])
 
 
-    def test_find_limits_config_files_in_subdirectory(self):
+    def test_find_config_file_paths_in_subdirectory(self):
         self.fs.create_dir('/etc/security/limits.d')
         self.fs.create_file('/etc/security/limits.d/10-test.conf')
 
         pam_limits = PamLimits()
-        files = pam_limits.limits_config_files
+        files = pam_limits.config_file_paths
 
         self.assertEqual(files, ['/etc/security/limits.d/10-test.conf'])
 
@@ -38,7 +38,7 @@ class TestPamLimits(TestCase):
         self.fs.create_file('/etc/security/limits.conf')
 
         pam_limits = PamLimits()
-        files = pam_limits.limits_config_files
+        files = pam_limits.config_file_paths
 
         expected_output = [
             '/etc/security/limits.conf',
@@ -59,7 +59,7 @@ class TestPamLimitsParser(TestCase):
         """)
 
         pam_limits = PamLimits()
-        pam_limits.actual_config
+        pam_limits.actual_limits_config
 
         expected = [
             {
@@ -77,7 +77,7 @@ class TestPamLimitsParser(TestCase):
                 "value": 10240,
             }
         ]
-        self.assertEqual(pam_limits.actual_config, expected)
+        self.assertEqual(pam_limits.actual_limits_config, expected)
 
     def test_read_multiple_configs(self):
         self.fs.create_file(
@@ -105,7 +105,7 @@ class TestPamLimitsParser(TestCase):
             """)
 
         pam_limits = PamLimits()
-        actual_config = pam_limits.actual_config
+        actual_config = pam_limits.actual_limits_config
 
         expected_output = [
             {
@@ -244,7 +244,7 @@ class TestLimitsComparator(TestCase):
         pam_limits = PamLimits()
         pam_limits.compare_to(external_pam_limits)
 
-        self.assertEqual(pam_limits.matching_config, external_pam_limits)
+        self.assertEqual(pam_limits.matching_limits, external_pam_limits)
 
 
 if __name__ == "__main__":
