@@ -1,50 +1,79 @@
 import unittest
+import tempfile
+import os
+import shutil
 from pyfakefs.fake_filesystem_unittest import TestCase
 from sysconfig_inspector.pam_limits import PamLimits
 
-class TestPamLimits(TestCase):
+def create_test_file(base_temp_dir: str, file_relative_path: str, contents: str = ""):
+    """Create a file with content in a temporary directory structure.
+    file_relative_path should be like '/etc/security/limits.conf'
+    """
+    full_path = os.path.join(base_temp_dir, file_relative_path.lstrip(os.sep))
+    
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    
+    with open(full_path, 'w', encoding='utf-8') as f:
+        f.write(contents)
+    return full_path 
+
+class BasePamLimitsTest(unittest.TestCase):
+    """Base class for tests that need a temporary filesystem."""
     def setUp(self):
-        self.setUpPyfakefs()  # initialize fake fs
+        self.temp_dir = tempfile.mkdtemp()
+        
+        self.temp_limits_conf_path = os.path.join(self.temp_dir, 'etc', 'security', 'limits.conf')
+        self.temp_limits_d_dir = os.path.join(self.temp_dir, 'etc', 'security', 'limits.d')
+        self.temp_limits_d_path_pattern = os.path.join(self.temp_limits_d_dir, '*.conf')
 
+        # Create /etc/security and /etc/security/limits.d paths
+        os.makedirs(os.path.dirname(self.temp_limits_conf_path), exist_ok=True) 
+        os.makedirs(self.temp_limits_d_dir, exist_ok=True)
 
+    def tearDown(self):
+        """Clean up the temporary directory after each test"""
+        shutil.rmtree(self.temp_dir)
+
+class TestPamLimits(BasePamLimitsTest):
     def test_init(self):
         pam_limits = PamLimits()
         self.assertIsInstance(pam_limits, PamLimits)
 
 
-    def test_find_default_limits_config_path(self):
-        self.fs.create_file('/etc/security/limits.conf')
+    def test_find_default_config_file(self):
+        conf_file_path = create_test_file(self.temp_dir, '/etc/security/limits.conf')
 
-        pam_limits = PamLimits()
+        pam_limits = PamLimits(limits_conf_path=self.temp_limits_conf_path,
+                               limits_d_path=self.temp_limits_d_path_pattern)
         files = pam_limits.config_file_paths
 
-        self.assertEqual(files, ['/etc/security/limits.conf'])
+        self.assertEqual(files, [conf_file_path])
 
 
     def test_find_config_file_paths_in_subdirectory(self):
-        self.fs.create_dir('/etc/security/limits.d')
-        self.fs.create_file('/etc/security/limits.d/10-test.conf')
+        d_file_path = create_test_file(self.temp_dir, '/etc/security/limits.d/10-test.conf')
 
-        pam_limits = PamLimits()
+        pam_limits = PamLimits(limits_conf_path=self.temp_limits_conf_path,
+                               limits_d_path=self.temp_limits_d_path_pattern)
         files = pam_limits.config_file_paths
 
-        self.assertEqual(files, ['/etc/security/limits.d/10-test.conf'])
+        self.assertEqual(files, [d_file_path])
 
 
-    def test_find_default_and_supplementery_config_files(self):
-        self.fs.create_dir('/etc/security/')
-        self.fs.create_dir('/etc/security/limits.d')
-        self.fs.create_file('/etc/security/limits.d/10-test.conf')
-        self.fs.create_file('/etc/security/limits.conf')
+    def test_default_and_supplementary_config_files_exist_combined(self):
+        conf_file_path = create_test_file(self.temp_dir, '/etc/security/limits.conf')
+        d_file_path = create_test_file(self.temp_dir, '/etc/security/limits.d/10-test.conf')
 
-        pam_limits = PamLimits()
+        pam_limits = PamLimits(limits_conf_path=self.temp_limits_conf_path,
+                               limits_d_path=self.temp_limits_d_path_pattern)
         files = pam_limits.config_file_paths
 
         expected_output = [
-            '/etc/security/limits.conf',
-            '/etc/security/limits.d/10-test.conf'
+            conf_file_path,
+            d_file_path
         ]
         self.assertEqual(files, expected_output)
+
 
 class TestPamLimitsParser(TestCase):
     """Test Parser functionality of class"""

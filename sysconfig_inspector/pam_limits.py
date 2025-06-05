@@ -14,11 +14,14 @@ class PamLimits:
     DEFAULT_LIMITS_D_PATH = '/etc/security/limits.d/*.conf'
     EXPECTED_LIMITS_FIELDS = 4 # domain, type, item, value
 
-    def __init__(self):
+    def __init__(self, limits_conf_path: Optional[str] = None, limits_d_path: Optional[str] = None):
         """
         Initialize PamLimits instance.
         Discovers and parses the system's PAM limits configuration files.
         """
+        self._limits_conf_path = limits_conf_path if limits_conf_path is not None else self.DEFAULT_LIMITS_CONF_PATH
+        self._limits_d_path = limits_d_path if limits_d_path is not None else self.DEFAULT_LIMITS_D_PATH
+
         self.config_file_paths: List[str] = self._discover_config_files()
         
         self.actual_limits_config: List[Dict[str, Any]] = self._parse_all_config_files()
@@ -61,10 +64,10 @@ class PamLimits:
             list: List of absolute file paths to the discovered configuration files.
         """
         found_files: List[str] = []
-        if os.path.isfile(self.DEFAULT_LIMITS_CONF_PATH):
-            found_files.append(self.DEFAULT_LIMITS_CONF_PATH)
+        if os.path.isfile(self._limits_conf_path):
+            found_files.append(self._limits_conf_path)
             
-        found_files.extend(glob.glob(self.DEFAULT_LIMITS_D_PATH))
+        found_files.extend(glob.glob(self._limits_d_path))
         return found_files
 
     def _parse_all_config_files(self) -> List[Dict[str, Any]]:
