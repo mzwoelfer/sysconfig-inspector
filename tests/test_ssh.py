@@ -63,3 +63,44 @@ class TestSSHInspector(BaseSshInspectorTest):
             sshd_config_path="")
 
         self.assertEqual(ssh_inspector.config_file_paths, [ssh_config])
+
+
+class TestSSHInspectorParser(BaseSshInspectorTest):
+    """Test SSH parser"""
+    def test_parse_boolean_sshd_config(self):
+        sshd_config = create_test_file(
+            self.temp_dir, 
+            '/etc/ssh/sshd_config',
+            contents="""
+                PasswordAuthentication no
+            """)
+
+        ssh_inspector = SSHInspector(
+            ssh_config_path="",
+            sshd_config_path=sshd_config
+        )
+
+        expected = {
+            "PasswordAuthentication": False
+        }
+
+        self.assertEqual(ssh_inspector.sshd_config, expected)
+
+    def test_parse_cast_integer_sshd_config(self):
+        sshd_config = create_test_file(
+            self.temp_dir, 
+            '/etc/ssh/sshd_config',
+            contents="""
+                Port 22
+            """)
+
+        ssh_inspector = SSHInspector(
+            ssh_config_path="",
+            sshd_config_path=sshd_config
+        )
+
+        expected = {
+            "Port": 22
+        }
+
+        self.assertEqual(ssh_inspector.sshd_config, expected)
