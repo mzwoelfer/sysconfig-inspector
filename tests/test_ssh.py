@@ -46,9 +46,20 @@ class TestSSHInspector(BaseSshInspectorTest):
         ssh_inspector = SSHInspector()
         self.assertIsInstance(ssh_inspector, SSHInspector)
 
-    def test_find_default_ssh_config_file(self):
+    def test_find_default_sshd_config_file(self):
         temp_sshd_config = create_test_file(self.temp_dir, '/etc/ssh/sshd_config')
 
-        ssh_inspector = SSHInspector(sshd_config_path=self.sshd_config_path)
+        ssh_inspector = SSHInspector(
+            ssh_config_path=self.ssh_config_path,
+            sshd_config_path=self.sshd_config_path)
 
         self.assertEqual(ssh_inspector.config_file_paths, [temp_sshd_config])
+
+    def test_find_default_ssh_config_file(self):
+        temp_ssh_config = create_test_file(self.temp_dir, '/etc/ssh/ssh_config')
+
+        ssh_inspector = SSHInspector(
+            ssh_config_path=self.ssh_config_path,
+            sshd_config_path=self.sshd_config_path)
+
+        self.assertEqual(ssh_inspector.config_file_paths, [temp_ssh_config])

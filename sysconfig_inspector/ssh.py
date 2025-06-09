@@ -7,8 +7,10 @@ class SSHInspector():
     SSH_CONFIG_PATH = '/etc/ssh/ssh_config'
 
     def __init__(self, 
-                 sshd_config_path: Optional[str] = None):
+                 sshd_config_path: Optional[str] = None,
+                 ssh_config_path: Optional[str] = None):
         self._sshd_config_path = sshd_config_path if sshd_config_path is not None else self.SSHD_CONFIG_PATH
+        self._ssh_config_path = ssh_config_path if ssh_config_path is not None else self.SSH_CONFIG_PATH
         self._config_file_paths: List[str] = []
         self._discover_config_files()
 
@@ -16,14 +18,16 @@ class SSHInspector():
     def config_file_paths(self) -> List[str]:
         return self._config_file_paths
 
-
     def _discover_config_files(self) -> None:
         """
-        Discovers SSH configurations files.
+        Discovers SSH(D) configurations files.
         """
         found_files: List[str] = []
 
         if os.path.isfile(self._sshd_config_path):
             found_files.append(self._sshd_config_path)
+
+        if os.path.isfile(self._ssh_config_path):
+            found_files.append(self._ssh_config_path)
 
         self._config_file_paths = found_files
