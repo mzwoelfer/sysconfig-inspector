@@ -104,3 +104,25 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
         }
 
         self.assertEqual(ssh_inspector.sshd_config, expected)
+
+    def test_parse_match_blocks(self):
+        pass
+
+    def test_subsystem_is_parsed_correctly(self):
+        """
+Subsystem       sftp    /usr/lib/openssh/sftp-server
+
+        """
+        pass
+
+    def test_acceptenv_is_parsed_correctly(self):
+        """
+        AcceptEnv LANG LC_*
+
+        """
+
+    def test_includes_configuration_correctly(self):
+        """
+        Include /etc/ssh/ssh_config.d/*.conf
+        Include /etc/ssh/sshd_config.d/*.conf
+        """

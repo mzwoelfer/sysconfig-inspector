@@ -25,6 +25,43 @@ class SSHInspector():
     def sshd_config(self) -> Dict[str, Any]:
         return self._sshd_config
 
+
+    def _load_sshd_config(self) -> None:
+        """
+        Load SSHD config from path and parse it
+        """
+        sshd_config_lines = self._read_config_file(self._sshd_config_path)
+        sanitized_lines = self._cleanse_config_lines(sshd_config_lines)
+        sshd_config = self._parse_sshd_config_lines(sanitized_lines)
+
+        self._sshd_config = sshd_config
+
+    @staticmethod
+    def _read_config_file(file_path: str):
+        """
+        Reads config file from given path
+        """
+        sshd_config_lines = []
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                sshd_config_lines = file.readlines()
+        except FileNotFoundError as e:
+            print(f"ERROR: File not found: '{file_path}': {e}")
+
+        return sshd_config_lines
+
+    @staticmethod
+    def _cleanse_config_lines(raw_config_lines: List[str]) -> List[str]:
+        """
+        Removes empty lines and comments
+        """
+
+        lines = [line for line in raw_config_lines if line.strip()]
+        lines = [line for line in lines if not line.strip().startswith("#")]
+
+        return lines
+
     @staticmethod
     def _parse_sshd_config_lines(config_lines: List[str]) -> Dict[str, Any]:
         """
@@ -50,35 +87,6 @@ class SSHInspector():
             sshd_config[key] = value
 
         return sshd_config
-
-    @staticmethod
-    def _cleanse_config_lines(raw_config_lines: List[str]) -> List[str]:
-        """
-        Removes empty lines and comments
-        """
-
-        lines = [line for line in raw_config_lines if line.strip()]
-        lines = [line for line in lines if not line.strip().startswith("#")]
-
-        return lines
-
-    def _load_sshd_config(self) -> None:
-        """
-        Parses SSHD config
-        """
-
-        sshd_config = {}
-
-        try:
-            with open(self._sshd_config_path, 'r', encoding='utf-8') as file:
-                sshd_config_lines = file.readlines()
-        except FileNotFoundError:
-            return
-
-        sanitized_lines = self._cleanse_config_lines(sshd_config_lines)
-        sshd_config = self._parse_sshd_config_lines(sanitized_lines)
-
-        self._sshd_config = sshd_config
 
     def _discover_config_files(self) -> None:
         """
