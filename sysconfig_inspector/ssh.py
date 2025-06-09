@@ -15,7 +15,7 @@ class SSHInspector():
         self._sshd_config = {}
 
         self._discover_config_files()
-        self._parse_sshd_config()
+        self._load_sshd_config()
 
     @property
     def config_file_paths(self) -> List[str]:
@@ -25,24 +25,16 @@ class SSHInspector():
     def sshd_config(self) -> Dict[str, Any]:
         return self._sshd_config
 
-    def _parse_sshd_config(self) -> None:
+    @staticmethod
+    def _parse_sshd_config_lines(config_lines: List[str]) -> Dict[str, Any]:
         """
-        Parses SSHD config
+        Parses a list of raw sshd_config strings.
+        Return a dictionary.
+        Only parsing logic. Therefore static
         """
-
         sshd_config = {}
 
-        try:
-            with open(self._sshd_config_path, 'r', encoding='utf-8') as file:
-                sshd_config_lines = file.readlines()
-        except FileNotFoundError:
-            return
-
-        lines = [line for line in sshd_config_lines if line.strip()]
-        lines = [line for line in lines if not line.strip().startswith("#")]
-
-
-        for line in lines:
+        for line in config_lines:
             line = line.strip()
             parts = line.split(None, 1)
             key = parts[0]
@@ -56,6 +48,35 @@ class SSHInspector():
                     value = False
 
             sshd_config[key] = value
+
+        return sshd_config
+
+    @staticmethod
+    def _cleanse_config_lines(raw_config_lines: List[str]) -> List[str]:
+        """
+        Removes empty lines and comments
+        """
+
+        lines = [line for line in raw_config_lines if line.strip()]
+        lines = [line for line in lines if not line.strip().startswith("#")]
+
+        return lines
+
+    def _load_sshd_config(self) -> None:
+        """
+        Parses SSHD config
+        """
+
+        sshd_config = {}
+
+        try:
+            with open(self._sshd_config_path, 'r', encoding='utf-8') as file:
+                sshd_config_lines = file.readlines()
+        except FileNotFoundError:
+            return
+
+        sanitized_lines = self._cleanse_config_lines(sshd_config_lines)
+        sshd_config = self._parse_sshd_config_lines(sanitized_lines)
 
         self._sshd_config = sshd_config
 
