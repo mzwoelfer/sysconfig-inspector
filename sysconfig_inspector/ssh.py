@@ -62,20 +62,11 @@ class SSHInspector():
 
         return lines
 
-    @staticmethod
-    def _parse_sshd_config_lines(config_lines: List[str]) -> Dict[str, Any]:
-        """
-        Parses a list of raw sshd_config strings.
-        Return a dictionary.
-        Only parsing logic. Therefore static
-        """
-        sshd_config = {}
-
-        for line in config_lines:
-            line = line.strip()
-            parts = line.split(None, 1)
-            key = parts[0]
-            value = parts[1]
+    def _parse_key_value_line(self, line: str) -> (str,str):
+        parts = line.split(None, 1)
+        if len(parts) == 2:
+            key = parts[0].strip()
+            value = parts[1].strip().strip('"')
             try:
                 value = int(value)
             except ValueError:
@@ -83,10 +74,58 @@ class SSHInspector():
                     value = True
                 elif value.lower() == "no":
                     value = False
+        else:
+            key = parts[0].strip()
+            value = True
+        return key, value
 
-            sshd_config[key] = value
+    def _build_match_block(self, criteria: str, config_lines: List[str]) -> Dict:
+        settings = {}
+
+        for line in config_lines:
+            key, value = self._parse_key_value_line(line)
+            settings[key] = value
+
+        match_block = {
+            "criterium": criteria,
+            "settings": settings
+        }
+
+        return match_block
+
+
+    def _parse_sshd_config_lines(self, config_lines: List[str]) -> Dict[str, Any]:
+        """
+        Parses a list of raw sshd_config strings.
+        Return a dictionary.
+        Only parsing logic. Therefore static
+        """
+        sshd_config = {}
+        matches = []
+
+        current_match = None
+        match_lines = []
+
+        for line in config_lines:
+            line = line.strip()
+            if line.lower().startswith('match '):
+                if current_match:
+                    matches.append(self._build_match_block(current_match, match_lines))
+                current_match = line[6:].strip()
+                match_lines = []
+            else:
+                if current_match is not None:
+                    match_lines.append(line)
+                else:
+                    key, value = self._parse_key_value_line(line)
+                    sshd_config[key] = value
+
+        if current_match:
+            matches.append(self._build_match_block(current_match, match_lines))
+            sshd_config["Match"] = matches
 
         return sshd_config
+
 
     def _discover_config_files(self) -> None:
         """
