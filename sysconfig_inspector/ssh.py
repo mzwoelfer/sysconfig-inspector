@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Tuple, Optional
 
 
 class SSHInspector():
@@ -79,9 +79,7 @@ class SSHInspector():
         for line in config_lines:
             line = line.strip()
             if line.lower().startswith('subsystem'):
-                splitted_subsystem = line.split(None, 2)
-                key = f"{splitted_subsystem[0]} {splitted_subsystem[1]}"
-                value = splitted_subsystem[2]
+                key, value = self._parse_subsystem_line(line)
                 sshd_config[key] = value
                 continue
 
@@ -133,6 +131,19 @@ class SSHInspector():
         }
 
         return match_block
+
+    def _parse_subsystem_line(self, line: str) -> Tuple[str, str]:
+
+        """
+        Parses a subsystem line.
+        Example: Subsystem sftp /usr/lib/openssh/sftp-server
+        """
+        splitted_subsystem = line.split(None, 2)
+        if len(splitted_subsystem) == 3:
+            key = f"{splitted_subsystem[0]} {splitted_subsystem[1]}"
+            value = splitted_subsystem[2]
+            return key, value
+        return "", "" # Return empty for malformed subsystem lines
 
     def _discover_config_files(self) -> None:
         """
