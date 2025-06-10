@@ -171,10 +171,27 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
 
     def test_subsystem_is_parsed_correctly(self):
         """
-Subsystem       sftp    /usr/lib/openssh/sftp-server
-
+        Parse Subsystem in SSHD config
+        Subsystem       sftp    /usr/lib/openssh/sftp-server
         """
-        pass
+        sshd_config = create_test_file(
+            self.temp_dir, 
+            '/etc/ssh/sshd_config',
+            contents="""
+                Subsystem sftp /usr/lib/openssh/sftp-server
+            """)
+
+        ssh_inspector = SSHInspector(
+            ssh_config_path="",
+            sshd_config_path=sshd_config
+        )
+
+        expected_output = {
+            "Subsystem sftp": "/usr/lib/openssh/sftp-server"
+        }
+
+        self.assertEqual(ssh_inspector.sshd_config, expected_output)
+
 
     def test_acceptenv_is_parsed_correctly(self):
         """
