@@ -132,6 +132,42 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
 
         self.assertEqual(ssh_inspector.sshd_config, expected_output)
 
+    def test_multiple_match_blocks(self):
+        sshd_config = create_test_file(
+            self.temp_dir, 
+            '/etc/ssh/sshd_config',
+            contents="""
+                Match address 8.8.8.8/8,9.9.9.9/8
+                PubKeyAuthentication yes
+                Match User admin
+                X11Forwarding yes
+            """)
+
+        ssh_inspector = SSHInspector(
+            ssh_config_path="",
+            sshd_config_path=sshd_config
+        )
+
+        expected_output = {
+            "Match": [
+                {
+                    "criterium": "address 8.8.8.8/8,9.9.9.9/8",
+                    "settings": {
+                        "PubKeyAuthentication": True
+                    }
+                },
+                {
+                    "criterium": "User admin",
+                    "settings": {
+                        "X11Forwarding": True
+                    }
+                }
+            ]
+        }
+
+        self.assertEqual(ssh_inspector.sshd_config, expected_output)
+
+
 
     def test_subsystem_is_parsed_correctly(self):
         """
