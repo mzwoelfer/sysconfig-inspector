@@ -86,7 +86,7 @@ class SSHInspector():
             if line.lower().startswith('match '):
                 if current_match:
                     matches.append(self._build_match_block(current_match, match_lines))
-                current_match = line[6:].strip()
+                current_match = line[len('match '):].strip()
                 match_lines = []
             else:
                 if current_match is not None:
