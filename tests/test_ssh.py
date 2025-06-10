@@ -36,6 +36,8 @@ class BaseSshInspectorTest(unittest.TestCase):
         
         self.define_temporary_paths_for_SSH_configs()
         self.create_temporary_directory(self.sshd_config_path)
+        self.included_dir_path = os.path.join(self.temp_dir, 'etc', 'ssh', 'sshd_config.d')
+        os.makedirs(self.included_dir_path, exist_ok=True)
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
@@ -201,6 +203,85 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
 
     def test_includes_configuration_correctly(self):
         """
-        Include /etc/ssh/ssh_config.d/*.conf
         Include /etc/ssh/sshd_config.d/*.conf
+        First items mentioned take precedence
         """
+
+        sshd_config = create_test_file(
+            self.temp_dir, 
+            '/etc/ssh/sshd_config',
+            contents=f"""
+                Include {self.included_dir_path}/*.conf
+                PubkeyAuthentication yes
+            """)
+
+        additional_test_file = create_test_file(
+            self.temp_dir, 
+            '/etc/ssh/sshd_config.d/00-custom.conf',
+            contents="""
+                PubkeyAuthentication no
+            """)
+
+        expected_output = {
+            "Include": f"{self.included_dir_path}/*.conf",
+            "PubkeyAuthentication" : False,
+        }
+        
+        ssh_inspector = SSHInspector(
+            ssh_config_path="",
+            sshd_config_path=sshd_config
+        )
+
+        self.assertEqual(ssh_inspector.sshd_config, expected_output)
+
+    def test_integration_large_combined_sshd_config(self):
+        """
+        Integration test one big sshd config
+        """
+        sshd_config = create_test_file(
+            self.temp_dir, 
+            '/etc/ssh/sshd_config',
+            contents="""
+                Port 22
+                PermitRootLogin no
+                PubKeyAuthentication no
+                Subsystem sftp /usr/sftp-path
+                X11Forwarding no
+                Match user dummy-user
+                ChrootDirectory /home/user/dummy
+                Match address 8.8.8.8/8,9.9.9.9/8
+                PubKeyAuthentication yes
+                ClientAliveCountMax 3
+            """)
+
+        expected_output = {
+            "Port": 22,
+            "PermitRootLogin": False,
+            "PubKeyAuthentication": False,
+            "Subsystem sftp": "/usr/sftp-path",
+            "X11Forwarding": False,
+            "Match": [
+                {
+                    "criterium": "user dummy-user",
+                    "settings": {
+                        "ChrootDirectory": "/home/user/dummy",
+                    }
+
+                },
+                {
+                    "criterium": "address 8.8.8.8/8,9.9.9.9/8",
+                    "settings": {
+                        "PubKeyAuthentication": True,
+                        "ClientAliveCountMax": 3
+                    }
+                }
+            ]
+        }
+
+        ssh_inspector = SSHInspector(
+            ssh_config_path="",
+            sshd_config_path=sshd_config
+        )
+
+        self.assertEqual(ssh_inspector.sshd_config, expected_output)
+

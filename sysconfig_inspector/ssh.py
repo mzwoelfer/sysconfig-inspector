@@ -1,4 +1,5 @@
 import os
+import glob
 from typing import Any, Dict, List, Tuple, Optional
 
 
@@ -80,7 +81,19 @@ class SSHInspector():
             line = line.strip()
             if line.lower().startswith('subsystem'):
                 key, value = self._parse_subsystem_line(line)
-                sshd_config[key] = value
+                if key and key not in sshd_config:
+                    sshd_config[key] = value
+                continue
+
+            elif line.lower().startswith('include'):
+                include_pattern = line[len('include '):].strip()
+                sshd_config["Include"] = include_pattern
+                included_data = self._parse_included_files(include_pattern)
+                print("INCLUDED_DATA", included_data)
+
+                for key, value in included_data.items():
+                    if key not in sshd_config:
+                        sshd_config[key] = value
                 continue
 
             if line.lower().startswith('match '):
@@ -93,13 +106,34 @@ class SSHInspector():
                     match_lines.append(line)
                 else:
                     key, value = self._parse_key_value_line(line)
-                    sshd_config[key] = value
+                    if key and key not in sshd_config:
+                        sshd_config[key] = value
 
         if current_match:
             matches.append(self._build_match_block(current_match, match_lines))
             sshd_config["Match"] = matches
 
         return sshd_config
+
+    def _parse_included_files(self, pattern: str) -> Dict[str, Any]:
+        """
+        Reads and parses configuration from files matching a given glob pattern.
+        Handles nested 'Include' directives through recursion.
+        """
+        combined_included_config: Dict[str, Any] = {}
+        for file_path in glob.glob(pattern):
+            if not os.path.isfile(file_path):
+                print(f"WARNING: Skipping non-file path in include pattern: '{file_path}'")
+                continue
+
+            raw_lines = self._read_config_file(file_path)
+            sanitized_lines = self._cleanse_config_lines(raw_lines)
+            
+            parsed_file_config = self._parse_sshd_config_lines(sanitized_lines)
+
+            combined_included_config.update(parsed_file_config)
+            
+        return combined_included_config
 
     def _parse_key_value_line(self, line: str) -> (str,str):
         parts = line.split(None, 1)
