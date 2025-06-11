@@ -113,7 +113,7 @@ class PamLimits:
             try:
                 value: Union[int, str] = int(raw_value)
             except ValueError:
-                value = raw_value  # Keep as string if not an integer
+                value = raw_value  
 
             parsed_entries.append({
                 "file": filename,

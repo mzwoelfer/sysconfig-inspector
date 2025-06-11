@@ -321,6 +321,38 @@ class TestLimitsComparator(BasePamLimitsTest):
             
             self.assertIn(f"Could not read file '{unreadable_file_path}':", cm.output[0])
 
+    def test_parse_limits_non_integer_value(self):
+        """
+        Test non integer values.
+        From the manpage:
+        All items support the values -1, unlimited or infinity
+        """
+        limits_content = """
+            @users soft maxlogins unlimited
+        """
+        limits_file_path = create_test_file(
+            self.temp_dir,
+            '/etc/security/limits.conf',
+            contents=limits_content
+        )
+
+        pam_limits = PamLimits(
+            limits_conf_path=limits_file_path,
+            limits_d_path=self.temp_limits_d_path_pattern
+        )
+        
+        expected_parsed_limits = [
+            {
+                "file": limits_file_path,
+                "domain": "@users",
+                "limit_type": "soft",
+                "limit_item": "maxlogins",
+                "value": "unlimited", 
+            },
+        ]
+
+        self.assertEqual(pam_limits.actual_limits_config, expected_parsed_limits)
+
 
 if __name__ == "__main__":
     unittest.main()
