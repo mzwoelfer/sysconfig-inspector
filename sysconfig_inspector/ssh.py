@@ -89,7 +89,6 @@ class SSHInspector():
                 include_pattern = line[len('include '):].strip()
                 sshd_config["Include"] = include_pattern
                 included_data = self._parse_included_files(include_pattern)
-                print("INCLUDED_DATA", included_data)
 
                 for key, value in included_data.items():
                     if key not in sshd_config:

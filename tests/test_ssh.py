@@ -4,17 +4,6 @@ import shutil
 import unittest
 from sysconfig_inspector.ssh import SSHInspector
 
-def create_test_file(temp_dir: str, relative_path: str, contents: str = ""):
-    """Creates a file with content in a temporary directory structure relative to temp_dir.
-    relative_path should be like '/etc/ssh/sshd_config'.
-    """
-    full_path = os.path.join(temp_dir, relative_path.lstrip(os.sep))
-
-    os.makedirs(os.path.dirname(full_path), exist_ok=True)
-
-    with open(full_path, 'w', encoding='utf-8') as file:
-        file.write(contents)
-    return full_path
 
 
 class BaseSshInspectorTest(unittest.TestCase):
@@ -42,6 +31,24 @@ class BaseSshInspectorTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
 
+    def _create_temp_path(self, relative_path: str) -> str:
+        """
+        Creates full path in temp directory.
+        Removes leading slash from e.g. /etc/ssh/sshd_config
+        """
+        return os.path.join(self.temp_dir, relative_path.lstrip('/'))
+
+    def create_test_file(self, relative_path: str, contents: str = ""):
+        """Creates a file with content in a temporary directory structure relative to temp_dir.
+        relative_path should be like '/etc/ssh/sshd_config'.
+        """
+        full_path = self._create_temp_path(relative_path)
+
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+
+        with open(full_path, 'w', encoding='utf-8') as file:
+            file.write(contents)
+        return full_path
 
 class TestSSHInspector(BaseSshInspectorTest):
     def test_ssh_class_init(self):
@@ -49,7 +56,7 @@ class TestSSHInspector(BaseSshInspectorTest):
         self.assertIsInstance(ssh_inspector, SSHInspector)
 
     def test_find_default_sshd_config_file(self):
-        sshd_config = create_test_file(self.temp_dir, '/etc/ssh/sshd_config')
+        sshd_config = self.create_test_file('/etc/ssh/sshd_config')
 
         ssh_inspector = SSHInspector(
             ssh_config_path="",
@@ -58,7 +65,7 @@ class TestSSHInspector(BaseSshInspectorTest):
         self.assertEqual(ssh_inspector.config_file_paths, [sshd_config])
 
     def test_find_default_ssh_config_file(self):
-        ssh_config = create_test_file(self.temp_dir, '/etc/ssh/ssh_config')
+        ssh_config = self.create_test_file('/etc/ssh/ssh_config')
 
         ssh_inspector = SSHInspector(
             ssh_config_path=ssh_config,
@@ -70,8 +77,7 @@ class TestSSHInspector(BaseSshInspectorTest):
 class TestSSHInspectorParser(BaseSshInspectorTest):
     """Test SSH parser"""
     def test_parse_boolean_sshd_config(self):
-        sshd_config = create_test_file(
-            self.temp_dir, 
+        sshd_config = self.create_test_file(
             '/etc/ssh/sshd_config',
             contents="""
                 PasswordAuthentication no
@@ -89,8 +95,7 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
         self.assertEqual(ssh_inspector.sshd_config, expected)
 
     def test_parse_cast_integer_sshd_config(self):
-        sshd_config = create_test_file(
-            self.temp_dir, 
+        sshd_config = self.create_test_file(
             '/etc/ssh/sshd_config',
             contents="""
                 Port 22
@@ -108,8 +113,7 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
         self.assertEqual(ssh_inspector.sshd_config, expected)
 
     def test_parse_match_blocks(self):
-        sshd_config = create_test_file(
-            self.temp_dir, 
+        sshd_config = self.create_test_file(
             '/etc/ssh/sshd_config',
             contents="""
                 Match address 8.8.8.8/8,9.9.9.9/8
@@ -135,8 +139,7 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
         self.assertEqual(ssh_inspector.sshd_config, expected_output)
 
     def test_multiple_match_blocks(self):
-        sshd_config = create_test_file(
-            self.temp_dir, 
+        sshd_config = self.create_test_file(
             '/etc/ssh/sshd_config',
             contents="""
                 Match address 8.8.8.8/8,9.9.9.9/8
@@ -176,8 +179,7 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
         Parse Subsystem in SSHD config
         Subsystem       sftp    /usr/lib/openssh/sftp-server
         """
-        sshd_config = create_test_file(
-            self.temp_dir, 
+        sshd_config = self.create_test_file(
             '/etc/ssh/sshd_config',
             contents="""
                 Subsystem sftp /usr/lib/openssh/sftp-server
@@ -207,16 +209,14 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
         First items mentioned take precedence
         """
 
-        sshd_config = create_test_file(
-            self.temp_dir, 
+        sshd_config = self.create_test_file(
             '/etc/ssh/sshd_config',
             contents=f"""
                 Include {self.included_dir_path}/*.conf
                 PubkeyAuthentication yes
             """)
 
-        additional_test_file = create_test_file(
-            self.temp_dir, 
+        additional_test_file = self.create_test_file(
             '/etc/ssh/sshd_config.d/00-custom.conf',
             contents="""
                 PubkeyAuthentication no
@@ -238,8 +238,7 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
         """
         Integration test one big sshd config
         """
-        sshd_config = create_test_file(
-            self.temp_dir, 
+        sshd_config = self.create_test_file(
             '/etc/ssh/sshd_config',
             contents="""
                 Port 22
