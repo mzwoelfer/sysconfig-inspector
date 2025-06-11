@@ -265,7 +265,6 @@ class SSHInspector():
             key = f"{parts[0]} {parts[1]}"
             value = parts[2].strip()
             return key, value
-        return "", "" 
 
     def _parse_acceptenv_line(self, line: str) -> Tuple[str, str]:
 
@@ -279,7 +278,6 @@ class SSHInspector():
             key = parts[0].strip()
             value = parts[1].strip()
             return key, value
-        return "", "" 
 
     def _build_match_block(self, criteria: str, config_lines: List[str]) -> Dict:
         """
