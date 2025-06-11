@@ -119,9 +119,9 @@ class SSHInspector():
         current_match_lines: List[str] = []
 
         for line in config_lines:
-            first_word_of_line = line.lower().split(None, 1)[0] if line.strip() else ''
+            directive_type = self._get_directive_type(line)
 
-            if first_word_of_line == 'match':
+            if directive_type == 'match':
                 if current_match_criteria:
                     match_blocks.append(self._build_match_block(current_match_criteria, current_match_lines))
 
@@ -138,7 +138,7 @@ class SSHInspector():
                 current_match_lines.append(line)
                 continue
 
-            if first_word_of_line == 'include':
+            if directive_type == 'include':
                 parts = line.split(None, 1)
                 if len(parts) > 1:
                     include_pattern = parts[1].strip()
@@ -170,6 +170,16 @@ class SSHInspector():
             parsed_config["Match"] = match_blocks
 
         return parsed_config
+
+    def _get_directive_type(self, line: str) -> str:
+        """Determines the type of sshd directive based on the first word of the line.
+        """
+        first_word = line.lower().split(None, 1)[0] if line.strip() else ''
+        if first_word == 'match':
+            return 'match'
+        if first_word == 'include':
+            return 'include'
+        return 'other'
 
     def _parse_included_files(self, pattern: str) -> Dict[str, Any]:
         """
