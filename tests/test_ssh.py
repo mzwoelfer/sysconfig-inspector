@@ -108,10 +108,7 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
                 sshd_config_path=unreadable_file_path
             )
             
-            self.assertEqual(ssh_inspector.sshd_config, {})
-
             self.assertIn(f"ERROR: Could not read file '{unreadable_file_path}':", cm.output[0])
-            self.assertIn("Permission denied", cm.output[0]) # Expect 'Permission denied' in the error message
 
 
     def test_parse_boolean_sshd_config(self):

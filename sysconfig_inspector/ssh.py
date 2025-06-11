@@ -163,10 +163,7 @@ class SSHInspector():
     def _extract_match_criteria(self, line: str) -> str:
         """Extracts the criteria string from a 'Match' line"""
         parts = line.split(None, 1)
-        if len(parts) > 1:
-            current_match_criteria = parts[1].strip()
-        else:
-            current_match_criteria = ""
+        current_match_criteria = parts[1].strip()
 
         return current_match_criteria
 
@@ -177,10 +174,7 @@ class SSHInspector():
         Parses included files and merges into existing sshd config
         """
         parts = line.split(None, 1)
-        if len(parts) > 1:
-            include_pattern = parts[1].strip()
-        else:
-            include_pattern = ""
+        include_pattern = parts[1].strip()
 
         # 'Include' directive can only appear once in the top-level config 
         if "Include" not in parsed_config:
