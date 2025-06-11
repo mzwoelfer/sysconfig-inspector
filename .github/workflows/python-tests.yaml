@@ -30,6 +30,19 @@ jobs:
         run: |
           coverage run --source=sysconfig_inspector -m unittest discover tests
 
+      - name: Generate detailed coverage report (for debugging)
+        run: |
+          coverage report -m > coverage_details.txt 
+          coverage html -d coverage_html_report    
+      
+      - name: Upload coverage artifacts (for debugging)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-debug-report
+          path: |
+            coverage_details.txt
+            coverage_html_report/ 
+
       - name: Check 100% coverage
         run: |
           coverage report --fail-under=100
