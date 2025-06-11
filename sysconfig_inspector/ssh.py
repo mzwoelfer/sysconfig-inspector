@@ -137,10 +137,8 @@ class SSHInspector():
                 self._handle_include_directive(line, parsed_config, match_blocks)
                 continue
 
+            self._handle_global_directive(line, parsed_config)
 
-            key, value = self._parse_directive_line(line)
-            if key and key not in parsed_config:
-                parsed_config[key] = value
             
         if current_match_criteria:
             match_blocks.append(self._build_match_block(current_match_criteria, current_match_lines))
@@ -194,6 +192,14 @@ class SSHInspector():
         for key, value in included_data.items():
             if key not in parsed_config:
                 parsed_config[key] = value
+
+    def _handle_global_directive(self, line: str, parsed_config: Dict[str, Any]) -> None:
+        """
+        Parses a sshd config line.
+        """
+        key, value = self._parse_directive_line(line)
+        if key and key not in parsed_config:
+            parsed_config[key] = value
 
     def _parse_included_files(self, pattern: str) -> Dict[str, Any]:
         """
