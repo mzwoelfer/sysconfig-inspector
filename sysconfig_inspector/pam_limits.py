@@ -1,6 +1,9 @@
 import glob
 import os
+import logging
 from typing import List, Dict, Any, Union, Optional
+
+logger = logging.getLogger(__name__)
 
 class PamLimits:
     """
@@ -102,7 +105,7 @@ class PamLimits:
             parts = line.split(None, self.EXPECTED_LIMITS_FIELDS)
             
             if len(parts) != self.EXPECTED_LIMITS_FIELDS:
-                print(f"WARNING: Line '{line}' in '{filename}' does not match expected format. Skipping.")
+                logger.warning(f"Line '{line}' in '{filename}' does not match expected format. Skipping.")
                 continue
 
             domain, limit_type, limit_item, raw_value = parts
@@ -156,7 +159,7 @@ class PamLimits:
             with open(path, 'rt', encoding='utf-8') as f:
                 return f.readlines()
         except IOError as e:
-            print(f"ERROR: Could not read file '{path}': {e}")
+            logger.error(f"Could not read file '{path}': {e}")
             return []
 
     def _sort_limits_data(self, limits_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
