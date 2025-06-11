@@ -205,10 +205,6 @@ class SSHInspector():
         combined_included_config: Dict[str, Any] = {}
 
         for file_path in glob.glob(pattern):
-            if not os.path.isfile(file_path):
-                print(f"WARNING: Skipping non-file path in include pattern: '{file_path}'")
-                continue
-
             raw_lines = self._read_file(file_path)
             sanitized_lines = self._cleanse_config_lines(raw_lines)
             
@@ -255,7 +251,7 @@ class SSHInspector():
                     value = value_raw
             return key, value
         elif len(parts) == 1:
-            return parts[0].strip(), True
+            return parts[0].strip(), None
         return "",""
 
     def _parse_subsystem_line(self, line: str) -> Tuple[str, str]:

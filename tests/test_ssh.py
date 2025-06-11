@@ -267,6 +267,29 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
 
         self.assertEqual(ssh_inspector.sshd_config, expected_output)
 
+    def test_parse_single_word_directive(self):
+        """
+        Tests that a directive with no explicit value is parsed.
+        Returns None.
+        """
+        sshd_content = """
+            UsePAM
+        """
+        sshd_config = self.create_test_file(
+            '/etc/ssh/sshd_config',
+            contents=sshd_content
+        )
+
+        expected_output = {
+            "UsePAM": None
+        }
+
+        ssh_inspector = SSHInspector(
+            ssh_config_path="",
+            sshd_config_path=sshd_config
+        )
+
+        self.assertEqual(ssh_inspector.sshd_config, expected_output)
 
     def test_subsystem_is_parsed_correctly(self):
         """
