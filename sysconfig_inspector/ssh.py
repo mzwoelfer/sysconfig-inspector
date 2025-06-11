@@ -139,23 +139,7 @@ class SSHInspector():
                 continue
 
             if directive_type == 'include':
-                parts = line.split(None, 1)
-                if len(parts) > 1:
-                    include_pattern = parts[1].strip()
-                else:
-                    include_pattern = ""
-
-                if "Include" not in parsed_config:
-                    parsed_config["Include"] = include_pattern
-
-                included_data = self._parse_included_files(include_pattern)
-
-                if "Match" in included_data:
-                    match_blocks.extend(included_data.pop("Match"))
-
-                for key, value in included_data.items():
-                    if key not in parsed_config:
-                        parsed_config[key] = value
+                self._handle_include_directive(line, parsed_config, match_blocks)
                 continue
 
 
@@ -180,6 +164,26 @@ class SSHInspector():
         if first_word == 'include':
             return 'include'
         return 'other'
+
+    def _handle_include_directive(self, line: str, parsed_config: Dict[str, Any], match_blocks: List[Dict[str, Any]]) -> None:
+        parts = line.split(None, 1)
+        if len(parts) > 1:
+            include_pattern = parts[1].strip()
+        else:
+            include_pattern = ""
+
+        # 'Include' directive can only appear once in the top-level config 
+        if "Include" not in parsed_config:
+            parsed_config["Include"] = include_pattern
+
+        included_data = self._parse_included_files(include_pattern)
+
+        if "Match" in included_data:
+            match_blocks.extend(included_data.pop("Match"))
+
+        for key, value in included_data.items():
+            if key not in parsed_config:
+                parsed_config[key] = value
 
     def _parse_included_files(self, pattern: str) -> Dict[str, Any]:
         """
