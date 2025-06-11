@@ -21,5 +21,15 @@ jobs:
         with:
           python-version: '3.8'
 
-      - name: Run tests
-        run: python -m unittest discover tests
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests with coverage
+        run: |
+          coverage run --source=sysconfig_inspector -m unittest discover tests
+
+      - name: Check 100% coverage
+        run: |
+          coverage report --fail-under=100
