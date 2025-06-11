@@ -220,6 +220,53 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
 
         self.assertEqual(ssh_inspector.sshd_config, expected_output)
 
+    def test_includes_match_block_correctly(self):
+        """
+        Tests that a Match block in an included file is correctly parsed and added to the sshd config
+        """
+        included_match_content = """
+            Match User testuser
+                PermitRootLogin no
+                PasswordAuthentication yes
+        """
+        included_file_path = self.create_test_file(
+            '/etc/ssh/sshd_config.d/50-match-user.conf', 
+            contents=included_match_content
+        )
+
+        main_config_content = f"""
+            Port 22
+            Include {self.included_sshd_dir_path}/*.conf 
+            HostKey /etc/ssh/ssh_host_rsa_key
+        """
+        main_sshd_config_path = self.create_test_file(
+            '/etc/ssh/sshd_config',
+            contents=main_config_content
+        )
+
+
+        expected_output = {
+            "Port": 22,
+            "HostKey": "/etc/ssh/ssh_host_rsa_key",
+            "Include": f"{self.included_sshd_dir_path}/*.conf", 
+            "Match": [
+                {
+                    "criterium": "User testuser",
+                    "settings": {
+                        "PermitRootLogin": False,
+                        "PasswordAuthentication": True
+                    }
+                }
+            ]
+        }
+
+        ssh_inspector = SSHInspector(
+            ssh_config_path="", 
+            sshd_config_path=main_sshd_config_path
+        )
+
+        self.assertEqual(ssh_inspector.sshd_config, expected_output)
+
 
     def test_subsystem_is_parsed_correctly(self):
         """
