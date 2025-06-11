@@ -85,6 +85,12 @@ class SSHInspector():
                     sshd_config[key] = value
                 continue
 
+            if line.lower().startswith('acceptenv'):
+                key, value = self._parse_acceptenv_line(line)
+                if key and key not in sshd_config:
+                    sshd_config[key] = value
+                continue
+
             elif line.lower().startswith('include'):
                 include_pattern = line[len('include '):].strip()
                 sshd_config["Include"] = include_pattern
@@ -175,6 +181,19 @@ class SSHInspector():
         if len(splitted_subsystem) == 3:
             key = f"{splitted_subsystem[0]} {splitted_subsystem[1]}"
             value = splitted_subsystem[2]
+            return key, value
+        return "", "" # Return empty for malformed subsystem lines
+
+    def _parse_acceptenv_line(self, line: str) -> Tuple[str, str]:
+
+        """
+        Parses a AcceptEnv line.
+        Example: AcceptEnv LANG LC_*
+        """
+        splitted_subsystem = line.split(None, 2)
+        if len(splitted_subsystem) == 3:
+            key = splitted_subsystem[0] 
+            value = f"{splitted_subsystem[1]} {splitted_subsystem[2]}"
             return key, value
         return "", "" # Return empty for malformed subsystem lines
 
