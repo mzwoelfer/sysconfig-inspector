@@ -252,7 +252,6 @@ class SSHInspector():
             return key, value
         elif len(parts) == 1:
             return parts[0].strip(), None
-        return "",""
 
     def _parse_subsystem_line(self, line: str) -> Tuple[str, str]:
 
