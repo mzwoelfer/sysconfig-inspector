@@ -172,6 +172,10 @@ class SSHInspector():
 
 
     def _handle_include_directive(self, line: str, parsed_config: Dict[str, Any], match_blocks: List[Dict[str, Any]]) -> None:
+        """
+        Processes an 'Include' directive.
+        Parses included files and merges into existing sshd config
+        """
         parts = line.split(None, 1)
         if len(parts) > 1:
             include_pattern = parts[1].strip()
