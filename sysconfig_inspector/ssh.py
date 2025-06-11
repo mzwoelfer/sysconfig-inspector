@@ -182,7 +182,7 @@ class SSHInspector():
             key = f"{splitted_subsystem[0]} {splitted_subsystem[1]}"
             value = splitted_subsystem[2]
             return key, value
-        return "", "" # Return empty for malformed subsystem lines
+        return "", "" 
 
     def _parse_acceptenv_line(self, line: str) -> Tuple[str, str]:
 
@@ -195,7 +195,7 @@ class SSHInspector():
             key = splitted_subsystem[0] 
             value = f"{splitted_subsystem[1]} {splitted_subsystem[2]}"
             return key, value
-        return "", "" # Return empty for malformed subsystem lines
+        return "", "" 
 
     def _discover_config_files(self) -> None:
         """
