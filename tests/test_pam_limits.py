@@ -2,6 +2,7 @@ import unittest
 import tempfile
 import os
 import shutil
+import logging
 from sysconfig_inspector.pam_limits import PamLimits
 
 def create_test_file(base_temp_dir: str, file_relative_path: str, contents: str = ""):
@@ -271,6 +272,86 @@ class TestLimitsComparator(BasePamLimitsTest):
         pam_limits.compare_to(external_pam_limits)
 
         self.assertEqual(pam_limits.matching_limits, external_pam_limits)
+
+
+    def test_malformed_lines_return_empty_list(self):
+        """
+        Malformed Limits lines return empty list
+        """
+        limits_content = """
+            user soft core
+        """
+        limits_file_path = create_test_file(self.temp_dir, '/etc/security/limits.conf', contents=limits_content)
+
+        pam_limits = PamLimits(limits_conf_path=limits_file_path,
+                               limits_d_path=self.temp_limits_d_path_pattern)
+
+        self.assertEqual(pam_limits.actual_limits_config, [])
+
+    def test_malformed_parse_limits_warns(self):
+        """
+        Tests that _parse_limits_entries logs a WARNING and skips
+        lines that do not have the expected number of fields.
+        """
+        limits_content = """
+            user soft core
+        """
+        limits_file_path = create_test_file(self.temp_dir, '/etc/security/limits.conf', contents=limits_content)
+
+        with self.assertLogs('sysconfig_inspector.pam_limits', level='WARNING') as cm:
+            pam_limits = PamLimits(limits_conf_path=limits_file_path,
+                                   limits_d_path=self.temp_limits_d_path_pattern)
+
+            self.assertEqual(pam_limits.actual_limits_config, [])
+            self.assertIn(f"WARNING", cm.output[0])
+            self.assertIn(f"Line 'user soft core' in '{limits_file_path}'", cm.output[0])
+
+
+    def test_read_file_content_ioerror(self):
+        """
+        When file can not be read - log an ERROR.
+        IOError (e.g., permission denied).
+        """
+        unreadable_file_path = create_test_file(self.temp_dir, '/etc/security/limits.conf', contents="some content")
+        os.chmod(unreadable_file_path, 0o000)
+
+        with self.assertLogs('sysconfig_inspector.pam_limits', level='ERROR') as cm:
+            pam_limits = PamLimits(limits_conf_path=unreadable_file_path,
+                                   limits_d_path=self.temp_limits_d_path_pattern)
+            
+            self.assertIn(f"Could not read file '{unreadable_file_path}':", cm.output[0])
+
+    def test_parse_limits_non_integer_value(self):
+        """
+        Test non integer values.
+        From the manpage:
+        All items support the values -1, unlimited or infinity
+        """
+        limits_content = """
+            @users soft maxlogins unlimited
+        """
+        limits_file_path = create_test_file(
+            self.temp_dir,
+            '/etc/security/limits.conf',
+            contents=limits_content
+        )
+
+        pam_limits = PamLimits(
+            limits_conf_path=limits_file_path,
+            limits_d_path=self.temp_limits_d_path_pattern
+        )
+        
+        expected_parsed_limits = [
+            {
+                "file": limits_file_path,
+                "domain": "@users",
+                "limit_type": "soft",
+                "limit_item": "maxlogins",
+                "value": "unlimited", 
+            },
+        ]
+
+        self.assertEqual(pam_limits.actual_limits_config, expected_parsed_limits)
 
 
 if __name__ == "__main__":

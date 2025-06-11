@@ -2,6 +2,7 @@ import tempfile
 import os
 import shutil
 import unittest
+import logging
 from sysconfig_inspector.ssh import SSHInspector
 
 
@@ -90,6 +91,25 @@ class TestSSHInspector(BaseSshInspectorTest):
 
 class TestSSHInspectorParser(BaseSshInspectorTest):
     """Test parsing SSHD directives"""
+    def test_sshd_config_file_unreadable(self):
+        """
+        Tests when sshd_config file exists but is unreadable (IOError).
+        Expects an empty config and an ERROR log message.
+        """
+        unreadable_file_path = self.create_test_file(
+            '/etc/ssh/unreadable_sshd_config'
+        )
+
+        os.chmod(unreadable_file_path, 0o000)
+
+        with self.assertLogs('sysconfig_inspector.ssh', level='ERROR') as cm:
+            ssh_inspector = SSHInspector(
+                ssh_config_path="",
+                sshd_config_path=unreadable_file_path
+            )
+            
+            self.assertIn(f"ERROR: Could not read file '{unreadable_file_path}':", cm.output[0])
+
 
     def test_parse_boolean_sshd_config(self):
         sshd_content = """
@@ -200,6 +220,76 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
 
         self.assertEqual(ssh_inspector.sshd_config, expected_output)
 
+    def test_includes_match_block_correctly(self):
+        """
+        Tests that a Match block in an included file is correctly parsed and added to the sshd config
+        """
+        included_match_content = """
+            Match User testuser
+                PermitRootLogin no
+                PasswordAuthentication yes
+        """
+        included_file_path = self.create_test_file(
+            '/etc/ssh/sshd_config.d/50-match-user.conf', 
+            contents=included_match_content
+        )
+
+        main_config_content = f"""
+            Port 22
+            Include {self.included_sshd_dir_path}/*.conf 
+            HostKey /etc/ssh/ssh_host_rsa_key
+        """
+        main_sshd_config_path = self.create_test_file(
+            '/etc/ssh/sshd_config',
+            contents=main_config_content
+        )
+
+
+        expected_output = {
+            "Port": 22,
+            "HostKey": "/etc/ssh/ssh_host_rsa_key",
+            "Include": f"{self.included_sshd_dir_path}/*.conf", 
+            "Match": [
+                {
+                    "criterium": "User testuser",
+                    "settings": {
+                        "PermitRootLogin": False,
+                        "PasswordAuthentication": True
+                    }
+                }
+            ]
+        }
+
+        ssh_inspector = SSHInspector(
+            ssh_config_path="", 
+            sshd_config_path=main_sshd_config_path
+        )
+
+        self.assertEqual(ssh_inspector.sshd_config, expected_output)
+
+    def test_parse_single_word_directive(self):
+        """
+        Tests that a directive with no explicit value is parsed.
+        Returns None.
+        """
+        sshd_content = """
+            UsePAM
+        """
+        sshd_config = self.create_test_file(
+            '/etc/ssh/sshd_config',
+            contents=sshd_content
+        )
+
+        expected_output = {
+            "UsePAM": None
+        }
+
+        ssh_inspector = SSHInspector(
+            ssh_config_path="",
+            sshd_config_path=sshd_config
+        )
+
+        self.assertEqual(ssh_inspector.sshd_config, expected_output)
 
     def test_subsystem_is_parsed_correctly(self):
         """

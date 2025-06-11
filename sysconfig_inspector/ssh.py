@@ -1,7 +1,9 @@
 import os
 import glob
+import logging
 from typing import Any, Dict, List, Tuple, Optional
 
+logger = logging.getLogger(__name__)
 
 class SSHInspector():
     """
@@ -88,7 +90,7 @@ class SSHInspector():
             print(f"WARNING: Config file not found: '{file_path}'. Skipping")
             return []
         except IOError as e:
-            print(f"ERROR: Could not read file '{file_path}': {e}")
+            logger.error(f"ERROR: Could not read file '{file_path}': {e}")
             return []
 
     @staticmethod
@@ -161,10 +163,7 @@ class SSHInspector():
     def _extract_match_criteria(self, line: str) -> str:
         """Extracts the criteria string from a 'Match' line"""
         parts = line.split(None, 1)
-        if len(parts) > 1:
-            current_match_criteria = parts[1].strip()
-        else:
-            current_match_criteria = ""
+        current_match_criteria = parts[1].strip()
 
         return current_match_criteria
 
@@ -175,10 +174,7 @@ class SSHInspector():
         Parses included files and merges into existing sshd config
         """
         parts = line.split(None, 1)
-        if len(parts) > 1:
-            include_pattern = parts[1].strip()
-        else:
-            include_pattern = ""
+        include_pattern = parts[1].strip()
 
         # 'Include' directive can only appear once in the top-level config 
         if "Include" not in parsed_config:
@@ -209,10 +205,6 @@ class SSHInspector():
         combined_included_config: Dict[str, Any] = {}
 
         for file_path in glob.glob(pattern):
-            if not os.path.isfile(file_path):
-                print(f"WARNING: Skipping non-file path in include pattern: '{file_path}'")
-                continue
-
             raw_lines = self._read_file(file_path)
             sanitized_lines = self._cleanse_config_lines(raw_lines)
             
@@ -259,8 +251,7 @@ class SSHInspector():
                     value = value_raw
             return key, value
         elif len(parts) == 1:
-            return parts[0].strip(), True
-        return "",""
+            return parts[0].strip(), None
 
     def _parse_subsystem_line(self, line: str) -> Tuple[str, str]:
 
@@ -274,7 +265,6 @@ class SSHInspector():
             key = f"{parts[0]} {parts[1]}"
             value = parts[2].strip()
             return key, value
-        return "", "" 
 
     def _parse_acceptenv_line(self, line: str) -> Tuple[str, str]:
 
@@ -288,7 +278,6 @@ class SSHInspector():
             key = parts[0].strip()
             value = parts[1].strip()
             return key, value
-        return "", "" 
 
     def _build_match_block(self, criteria: str, config_lines: List[str]) -> Dict:
         """

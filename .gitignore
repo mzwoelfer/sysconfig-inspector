@@ -9,3 +9,6 @@ Env/
 venv/
 VENV/
 env/
+
+# Coverage reports
+.coverage

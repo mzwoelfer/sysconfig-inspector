@@ -9,6 +9,7 @@ Modular classes that can read, parse and compare the system configuration agains
 - Compare the system configuration against target settings
 - Extendable to other configs like SSH, hosts, fstab, etc.
 - Designed for integration into automation workflows (e.g. Ansible)
+- Only uses python native libraries for implementation and testing
 
 ## USAGE
 ```PYTHON
@@ -26,16 +27,27 @@ print("Unexpected in actual:", pam_limits.not_in_expected)
 - Python3.8+
 - Use virtual environment for isolation
 - Tests use `unittest`
+- Filesystem tests with `tempfile`
 
 ## SETUP
 ```BASH
 python3 -m venv Env
 source Env/bin/activate
+pip install -r requirements.txt
 ```
 
 Run tests:
 ```BASH
 python3 -m unittest discover tests
+```
+
+
+Run tests with coverage:
+```BASH
+coverage run --source=sysconfig_inspector -m unittest discover tests
+
+# Read the report
+coverage report -m
 ```
 
 ## LICENSE
