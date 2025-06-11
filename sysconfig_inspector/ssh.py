@@ -125,12 +125,7 @@ class SSHInspector():
                 if current_match_criteria:
                     match_blocks.append(self._build_match_block(current_match_criteria, current_match_lines))
 
-                parts = line.split(None, 1)
-                if len(parts) > 1:
-                    current_match_criteria = parts[1].strip()
-                else:
-                    current_match_criteria = ""
-
+                current_match_criteria = self._extract_match_criteria(line)
                 current_match_lines = []
                 continue
 
@@ -164,6 +159,17 @@ class SSHInspector():
         if first_word == 'include':
             return 'include'
         return 'other'
+
+    def _extract_match_criteria(self, line: str) -> str:
+        """Extracts the criteria string from a 'Match' line"""
+        parts = line.split(None, 1)
+        if len(parts) > 1:
+            current_match_criteria = parts[1].strip()
+        else:
+            current_match_criteria = ""
+
+        return current_match_criteria
+
 
     def _handle_include_directive(self, line: str, parsed_config: Dict[str, Any], match_blocks: List[Dict[str, Any]]) -> None:
         parts = line.split(None, 1)
