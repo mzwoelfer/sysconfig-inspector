@@ -1,7 +1,9 @@
 import os
 import glob
+import logging
 from typing import Any, Dict, List, Tuple, Optional
 
+logger = logging.getLogger(__name__)
 
 class SSHInspector():
     """
@@ -88,7 +90,7 @@ class SSHInspector():
             print(f"WARNING: Config file not found: '{file_path}'. Skipping")
             return []
         except IOError as e:
-            print(f"ERROR: Could not read file '{file_path}': {e}")
+            logger.error(f"ERROR: Could not read file '{file_path}': {e}")
             return []
 
     @staticmethod

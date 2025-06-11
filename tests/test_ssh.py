@@ -2,6 +2,7 @@ import tempfile
 import os
 import shutil
 import unittest
+import logging
 from sysconfig_inspector.ssh import SSHInspector
 
 
@@ -90,6 +91,28 @@ class TestSSHInspector(BaseSshInspectorTest):
 
 class TestSSHInspectorParser(BaseSshInspectorTest):
     """Test parsing SSHD directives"""
+    def test_sshd_config_file_unreadable(self):
+        """
+        Tests when sshd_config file exists but is unreadable (IOError).
+        Expects an empty config and an ERROR log message.
+        """
+        unreadable_file_path = self.create_test_file(
+            '/etc/ssh/unreadable_sshd_config'
+        )
+
+        os.chmod(unreadable_file_path, 0o000)
+
+        with self.assertLogs('sysconfig_inspector.ssh', level='ERROR') as cm:
+            ssh_inspector = SSHInspector(
+                ssh_config_path="",
+                sshd_config_path=unreadable_file_path
+            )
+            
+            self.assertEqual(ssh_inspector.sshd_config, {})
+
+            self.assertIn(f"ERROR: Could not read file '{unreadable_file_path}':", cm.output[0])
+            self.assertIn("Permission denied", cm.output[0]) # Expect 'Permission denied' in the error message
+
 
     def test_parse_boolean_sshd_config(self):
         sshd_content = """
