@@ -139,7 +139,12 @@ class SSHInspector():
                 continue
 
             if first_word_of_line == 'include':
-                include_pattern = line[len('include '):].strip()
+                parts = line.split(None, 1)
+                if len(parts) > 1:
+                    include_pattern = parts[1].strip()
+                else:
+                    include_pattern = ""
+
                 if "Include" not in parsed_config:
                     parsed_config["Include"] = include_pattern
 
