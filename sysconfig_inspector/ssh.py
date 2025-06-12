@@ -103,7 +103,7 @@ class SSHInspector():
             with open(file_path, 'r', encoding='utf-8') as file:
                 return file.readlines()
         except FileNotFoundError:
-            print(f"WARNING: Config file not found: '{file_path}'. Skipping")
+            logger.warning(f"Config file not found: '{file_path}'. Skipping")
             return []
         except IOError as e:
             logger.error(f"ERROR: Could not read file '{file_path}': {e}")
