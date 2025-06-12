@@ -5,6 +5,10 @@ import unittest
 import logging
 from sysconfig_inspector.ssh import SSHInspector
 
+logging.basicConfig(level=logging.DEBUG)
+_ssh_inspector_logger = logging.getLogger('sysconfig_inspector.ssh')
+
+print(f"DEBUG_TEST: Effective User ID (euid): {os.geteuid()}")
 
 class BaseSshInspectorTest(unittest.TestCase):
     """
@@ -96,11 +100,11 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
         Tests when sshd_config file exists but is unreadable (IOError).
         Expects an empty config and an ERROR log message.
         """
-        unreadable_file_path = self.create_test_file(
+        unreadable_file_path = self._build_temp_path(
             '/etc/ssh/unreadable_sshd_config'
         )
+        os.makedirs(unreadable_file_path, exist_ok=True)
 
-        os.chmod(unreadable_file_path, 0o000)
 
         with self.assertLogs('sysconfig_inspector.ssh', level='ERROR') as cm:
             ssh_inspector = SSHInspector(
