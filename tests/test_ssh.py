@@ -455,3 +455,37 @@ class TestSSHInspectorComparison(BaseSshInspectorTest):
         comparison_result = ssh_inspector.compare_to(external_sshd_config)
 
         self.assertEqual(ssh_inspector.matching_config, external_sshd_config)
+
+    def test_compare_to_with_missing_and_extra_directives(self):
+        """
+        Tests compare_to when there are missing and extra global directives.
+        """
+        actual_config_content = """
+        Port 22
+        UseDNS no
+        """
+        self.create_test_file(
+            '/etc/ssh/sshd_config',
+            contents=actual_config_content
+        )
+
+        ssh_inspector = SSHInspector(
+            sshd_config_path=self.sshd_config_path,
+            ssh_config_path="")
+
+        target_sshd_config = {
+            "Port": 22,                
+            "PermitRootLogin": False,  
+            "LogLevel": "INFO"         
+        }
+
+        ssh_inspector.compare_to(target_sshd_config)
+
+        self.assertEqual(ssh_inspector.matching_config, {"Port": 22})
+        self.assertEqual(ssh_inspector.missing_from_actual, {
+            "PermitRootLogin": False,
+            "LogLevel": "INFO"
+        })
+        self.assertEqual(ssh_inspector.extra_in_actual, {
+            "UseDNS": False 
+        })

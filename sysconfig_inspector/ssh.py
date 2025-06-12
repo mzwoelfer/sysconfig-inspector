@@ -55,9 +55,60 @@ class SSHInspector():
             self.matching_config
             self.missing_from_actual
             self.extra_in_actual
+        Compares the actual parsed sshd_config with a target_sshd_config.
         """
-        self.matching_config = { 'Port': 22 }
+        actual_config = self.sshd_config
+        self.matching_config = {}
+        self.missing_from_actual = {}
+        self.extra_in_actual = {}
 
+        for key, value in target_sshd_config.items():
+            if key == "Match" or key == "Include": 
+                continue 
+
+            if key in actual_config:
+                if actual_config[key] == value:
+                    self.matching_config[key] = value
+                else:
+                    self.missing_from_actual[key] = value
+                    self.extra_in_actual[key] = actual_config[key]
+            else:
+                self.missing_from_actual[key] = value
+
+        for key, value in actual_config.items():
+            if key == "Match" or key == "Include": 
+                continue 
+
+            if key not in target_sshd_config:
+                self.extra_in_actual[key] = value
+
+        actual_matches = actual_config.get("Match", [])
+        target_matches = target_sshd_config.get("Match", [])
+
+        if actual_matches and target_matches:
+            if actual_matches == target_matches:
+                self.matching_config["Match"] = actual_matches
+            else:
+                self.missing_from_actual["Match"] = target_matches
+                self.extra_in_actual["Match"] = actual_matches
+        elif actual_matches:
+            self.extra_in_actual["Match"] = actual_matches
+        elif target_matches:
+            self.missing_from_actual["Match"] = target_matches
+
+        actual_include = actual_config.get("Include")
+        target_include = target_sshd_config.get("Include")
+
+        if actual_include and target_include:
+            if actual_include == target_include:
+                self.matching_config["Include"] = actual_include
+            else:
+                self.missing_from_actual["Include"] = target_include
+                self.extra_in_actual["Include"] = actual_include
+        elif actual_include:
+            self.extra_in_actual["Include"] = actual_include
+        elif target_include:
+            self.missing_from_actual["Include"] = target_include
 
 
     # --- CORE CONFIG LOADING ---
