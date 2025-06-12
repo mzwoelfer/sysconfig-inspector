@@ -155,12 +155,8 @@ class PamLimits:
         Raises:
             IOError: If the file cannot be read.
         """
-        try:
-            with open(path, 'rt', encoding='utf-8') as f:
-                return f.readlines()
-        except IOError as e:
-            logger.error(f"Could not read file '{path}': {e}")
-            return []
+        with open(path, 'rt', encoding='utf-8') as f:
+            return f.readlines()
 
     def _sort_limits_data(self, limits_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """

@@ -1,4 +1,5 @@
 import unittest
+import stat
 import tempfile
 import os
 import shutil
@@ -306,20 +307,6 @@ class TestLimitsComparator(BasePamLimitsTest):
             self.assertIn(f"WARNING", cm.output[0])
             self.assertIn(f"Line 'user soft core' in '{limits_file_path}'", cm.output[0])
 
-
-    def test_read_file_content_ioerror(self):
-        """
-        When file can not be read - log an ERROR.
-        IOError (e.g., permission denied).
-        """
-        unreadable_file_path = create_test_file(self.temp_dir, '/etc/security/limits.conf', contents="some content")
-        os.chmod(unreadable_file_path, 0o000)
-
-        with self.assertLogs('sysconfig_inspector.pam_limits', level='ERROR') as cm:
-            pam_limits = PamLimits(limits_conf_path=unreadable_file_path,
-                                   limits_d_path=self.temp_limits_d_path_pattern)
-            
-            self.assertIn(f"Could not read file '{unreadable_file_path}':", cm.output[0])
 
     def test_parse_limits_non_integer_value(self):
         """
