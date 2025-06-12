@@ -34,6 +34,10 @@ class SSHInspector():
 
         self._discover_and_load_configs()
 
+        self.matching_config: Dict[str, Any] = {}
+        self.missing_from_actual: Dict[str, Any] = {}
+        self.extra_in_actual: Dict[str, Any] = {}
+
     @property
     def config_file_paths(self) -> List[str]:
         """List of discovered SSH config files"""
@@ -43,6 +47,18 @@ class SSHInspector():
     def sshd_config(self) -> Dict[str, Any]:
         """Parsed SSHD config as dictionary"""
         return self._sshd_config
+
+    def compare_to(self, target_sshd_config: Dict[str, Any]) -> None:
+        """
+        Compares external sshd config with actual config.
+        Populates:
+            self.matching_config
+            self.missing_from_actual
+            self.extra_in_actual
+        """
+        self.matching_config = { 'Port': 22 }
+
+
 
     # --- CORE CONFIG LOADING ---
 

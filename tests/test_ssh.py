@@ -427,3 +427,27 @@ class TestSSHInspectorParser(BaseSshInspectorTest):
 
         self.assertEqual(ssh_inspector.sshd_config, expected_output)
 
+class TestSSHInspectorComparison(BaseSshInspectorTest):
+    def test_compare_to_same(self):
+        """
+        Tests compare_to with basic global SSHD settings
+        """
+        actual_config_content = """
+        Port 22
+        """
+        self.create_test_file(
+            '/etc/ssh/sshd_config',
+            contents=actual_config_content
+        )
+
+        ssh_inspector = SSHInspector(
+            sshd_config_path=self.sshd_config_path,
+            ssh_config_path="")
+
+        external_sshd_config = {
+            "Port": 22       
+        }
+
+        comparison_result = ssh_inspector.compare_to(external_sshd_config)
+
+        self.assertEqual(ssh_inspector.matching_config, external_sshd_config)
