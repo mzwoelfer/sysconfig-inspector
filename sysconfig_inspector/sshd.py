@@ -85,10 +85,7 @@ class SSHDInspector():
         self._sshd_config = self._parse_sshd_config_lines(sanitized_lines)
 
 
-
-
     # --- PARSING LOGIC ---
-
     def _parse_sshd_config_lines(self, config_lines: List[str]) -> Dict[str, Any]:
         """
         Parses a list of sanitized sshd_config lines. 
