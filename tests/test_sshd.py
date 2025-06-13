@@ -678,3 +678,149 @@ class TestIntegrationTest(BaseSshInspectorTest):
 
         self.assertEqual(sshd_inspector.sshd_config, expected_output)
 
+    def test_large_compare_to_functionality(self):
+        included_dir_path = self.included_sshd_dir_path
+
+        actual_main_content = f"""
+            Include {included_dir_path}/*.conf
+            Port 22
+            PubKeyAuthentication yes
+            LogLevel INFO
+
+            PermitRootLogin prohibit-password
+            AllowTcpForwarding yes
+
+            Match User admin
+                PermitRootLogin yes
+                X11Forwarding no
+            Match Address 192.168.1.0/24
+                ClientAliveInterval 60
+                MaxAuthTries 3
+            """
+        sshd_config = self.create_test_file(
+            '/etc/ssh/sshd_config',
+            actual_main_content
+        )
+
+        # --- EXPECTED PARSED ACTUAL CONFIG ---
+        actual_parsed_config = {
+            "Port": 22, 
+            "PubKeyAuthentication": True, 
+            "LogLevel": "INFO",
+            "Match": [
+                {
+                    "criterium": "User admin",
+                    "settings": {
+                        "PermitRootLogin": True,
+                        "X11Forwarding": False
+                    }
+                },
+                {
+                    "criterium": "Address 192.168.1.0/24",
+                    "settings": {
+                        "ClientAliveInterval": 60,
+                        "MaxAuthTries": 3
+                    }
+                }
+            ],
+            "Include": f"{included_dir_path}/*.conf", 
+            "PermitRootLogin": "prohibit-password", 
+            "AllowTcpForwarding": True, 
+        }
+
+
+        target_sshd_config = {
+            "Port": 22,
+            "PubKeyAuthentication": True, 
+            "LogLevel": "INFO",
+            "Match": [
+                {
+                    "criterium": "User admin",
+                    "settings": {
+                        "PermitRootLogin": False, 
+                        "AllowAgentForwarding": True 
+                    }
+                },
+                {
+                    "criterium": "Address 192.168.1.0/24",
+                    "settings": {
+                        "ClientAliveInterval": 60,
+                        "MaxAuthTries": 3
+                    }
+                },
+                {
+                    "criterium": "Group developers",
+                    "settings": {
+                        "ForceCommand": "/usr/bin/git-shell"
+                    }
+                }
+            ],
+            "Include": "/etc/ssh/sshd_config.d/*.conf",
+            "Compression": True,
+            "ClientAliveInterval": 60, 
+            "MaxAuthTries": 5, 
+        }
+
+        # --- INITIALIZE COMPARISON RESULTS ---
+        sshd_inspector = SSHDInspector(
+            sshd_config_path=sshd_config
+        )
+        sshd_inspector.compare_to(target_sshd_config)
+
+        # --- COMPARISON RESULTS ---
+        matching_config = {
+            "Port": 22, 
+            "PubKeyAuthentication": True, 
+            "LogLevel": "INFO",
+            "Match": [
+                {
+                    "criterium": "Address 192.168.1.0/24",
+                    "settings": {
+                        "ClientAliveInterval": 60,
+                        "MaxAuthTries": 3
+                    }
+                }
+            ]
+        }
+
+        missing_from_actual = {
+            "Include": "/etc/ssh/sshd_config.d/*.conf",
+            "Compression": True,
+            "ClientAliveInterval": 60, 
+            "MaxAuthTries": 5, 
+            "Match": [
+                {
+                    "criterium": "User admin",
+                    "settings": {
+                        "PermitRootLogin": False, 
+                        "AllowAgentForwarding": True 
+                    }
+                },
+                {
+                    "criterium": "Group developers", 
+                    "settings": {
+                        "ForceCommand": "/usr/bin/git-shell"
+                    }
+                }
+            ]
+        }
+
+        extra_in_actual = {
+            "Include": f"{included_dir_path}/*.conf", 
+            "PermitRootLogin": "prohibit-password", 
+            "AllowTcpForwarding": True, 
+            "Match": [
+                {
+                    "criterium": "User admin",
+                    "settings": {
+                        "PermitRootLogin": True,
+                        "X11Forwarding": False
+                    }
+                },
+            ]
+        }
+
+        self.assertEqual(sshd_inspector.matching_config, matching_config)
+        self.assertEqual(sshd_inspector.missing_from_actual, missing_from_actual)
+        self.assertEqual(sshd_inspector.extra_in_actual, extra_in_actual)
+
