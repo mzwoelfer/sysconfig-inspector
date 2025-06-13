@@ -104,47 +104,35 @@ class SSHDInspector():
             actual_settings = actual_matches_map.get(criterium)
             target_settings = target_matches_map.get(criterium)
 
-            if actual_settings == target_settings:
-                if actual_settings is not None:
-                    matched_match_blocks.append({"criterium": criterium, "settings": actual_settings})
-            else:
-                current_missing_settings = {}
-                current_extra_settings = {}
-                matched_settings = {}
+            current_missing_settings = {}
+            current_extra_settings = {}
+            current_matched_settings = {}
 
-                all_settings_keys = set(actual_settings.keys() if actual_settings else []) | \
+            all_settings_keys = set(actual_settings.keys() if actual_settings else []) | \
                                     set(target_settings.keys() if target_settings else [])
 
-                for setting_key in all_settings_keys:
-                    actual_setting_value = actual_settings.get(setting_key) if actual_settings else None
-                    target_setting_value = target_settings.get(setting_key) if target_settings else None
+            for setting_key in all_settings_keys:
+                actual_setting_value = actual_settings.get(setting_key) if actual_settings else None
+                target_setting_value = target_settings.get(setting_key) if target_settings else None
 
-                    if actual_setting_value == target_setting_value:
-                        if actual_setting_value is not None:
-                            matched_settings[setting_key] = actual_setting_value
-                    else:
-                        if target_setting_value is not None:
-                            current_missing_settings[setting_key] = target_setting_value
-                        if actual_setting_value is not None:
-                            current_extra_settings[setting_key] = actual_setting_value
+                if actual_setting_value == target_setting_value:
+                    if actual_setting_value is not None:
+                        current_matched_settings[setting_key] = actual_setting_value
+                else:
+                    if target_setting_value is not None:
+                        current_missing_settings[setting_key] = target_setting_value
+                    if actual_setting_value is not None:
+                        current_extra_settings[setting_key] = actual_setting_value
 
-                if matched_settings:
-                    if matched_match_blocks: 
-                        for block in matched_match_blocks:
-                            if block["criterium"] == criterium:
-                                block["settings"].update(matched_settings)
-                                break
-                        else:
-                            matched_match_blocks.append({"criterium": criterium, "settings": matched_settings})
-                    else:
-                        matched_match_blocks.append({"criterium": criterium, "settings": matched_settings})
-
-
-                if current_missing_settings:
-                    missing_match_blocks.append({"criterium": criterium, "settings": current_missing_settings})
-                if current_extra_settings:
-                    extra_match_blocks.append({"criterium": criterium, "settings": current_extra_settings})
+            if current_matched_settings:
+                matched_match_blocks.append({"criterium": criterium, "settings": current_matched_settings})
             
+            if current_missing_settings:
+                missing_match_blocks.append({"criterium": criterium, "settings": current_missing_settings})
+            
+            if current_extra_settings:
+                extra_match_blocks.append({"criterium": criterium, "settings": current_extra_settings})
+
         return matched_match_blocks, missing_match_blocks, extra_match_blocks
 
 
@@ -225,7 +213,8 @@ class SSHDInspector():
 
             if directive_type == 'match':
                 if current_match_criteria:
-                    match_blocks.append(self._build_match_block(current_match_criteria, current_match_lines))
+                    block = self._build_match_block(current_match_criteria, current_match_lines)
+                    match_blocks.append(block)
 
                 current_match_criteria = self._extract_match_criteria(line)
                 current_match_lines = []
@@ -350,6 +339,7 @@ class SSHDInspector():
                 else:
                     # keep string: e.g. PermitRootLogin prohibit-password
                     value = value_raw
+
             return key, value
         elif len(parts) == 1:
             return parts[0].strip(), None
@@ -390,7 +380,7 @@ class SSHDInspector():
             key, value = self._parse_directive_line(line)
             if key:
                 settings[key] = value
-
+        
         match_block = {
             "criterium": criteria,
             "settings": settings
