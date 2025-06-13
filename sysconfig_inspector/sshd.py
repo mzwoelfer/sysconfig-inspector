@@ -174,9 +174,6 @@ class SSHDInspector():
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 return file.readlines()
-        except FileNotFoundError:
-            logger.warning(f"Config file not found: '{file_path}'. Skipping")
-            return []
         except IOError as e:
             logger.error(f"ERROR: Could not read file '{file_path}': {e}")
             return []

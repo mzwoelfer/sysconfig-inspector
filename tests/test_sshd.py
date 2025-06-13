@@ -85,7 +85,7 @@ class TestSSHDInspector(BaseSshInspectorTest):
 
 # --- TEST FILE SYSTEM OPERATIONS ---
 class TestFileReadOperations(BaseSshInspectorTest):
-    def test_sshd_config_file_unreadable(self):
+    def test_sshd_config_not_found(self):
         """
         Tests file not found.
         """
@@ -98,7 +98,7 @@ class TestFileReadOperations(BaseSshInspectorTest):
                 sshd_config_path=unreadable_file_path
             )
 
-            self.assertIn("file not found", cm.output[0])
+            self.assertIn("not read file", cm.output[0])
 
     def test_sshd_config_file_unreadable(self):
         """
