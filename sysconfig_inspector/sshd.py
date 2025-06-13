@@ -285,13 +285,14 @@ class SSHDInspector():
             value_raw = parts[1].strip().strip('"')
 
             try:
-                value: Any = int(value_raw)
+                value = int(value_raw)
             except ValueError:
                 if value_raw.lower() == "yes":
                     value = True
                 elif value_raw.lower() == "no":
                     value = False
                 else:
+                    # keep string: e.g. PermitRootLogin prohibit-password
                     value = value_raw
             return key, value
         elif len(parts) == 1:
