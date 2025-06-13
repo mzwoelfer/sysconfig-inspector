@@ -703,32 +703,6 @@ class TestIntegrationTest(BaseSshInspectorTest):
         )
 
         # --- EXPECTED PARSED ACTUAL CONFIG ---
-        actual_parsed_config = {
-            "Port": 22, 
-            "PubKeyAuthentication": True, 
-            "LogLevel": "INFO",
-            "Match": [
-                {
-                    "criterium": "User admin",
-                    "settings": {
-                        "PermitRootLogin": True,
-                        "X11Forwarding": False
-                    }
-                },
-                {
-                    "criterium": "Address 192.168.1.0/24",
-                    "settings": {
-                        "ClientAliveInterval": 60,
-                        "MaxAuthTries": 3
-                    }
-                }
-            ],
-            "Include": f"{included_dir_path}/*.conf", 
-            "PermitRootLogin": "prohibit-password", 
-            "AllowTcpForwarding": True, 
-        }
-
-
         target_sshd_config = {
             "Port": 22,
             "PubKeyAuthentication": True, 
