@@ -14,14 +14,15 @@ class SSHDInspector():
     SSHD_CONFIG_PATH = '/etc/ssh/sshd_config'
 
     def __init__(self, 
-                 sshd_config_path: Optional[str] = None,
-                 ssh_config_path: Optional[str] = None):
+                 sshd_config_path: Optional[str] = None):
         """
         Initializes the SSHInspector with specified or default configuration paths.
 
         ARGS:
             sshd_config_path (str, optional): sshd_config file
         """
+        self._file_reader = FileConfigReader()
+        self._comparator = SSHDConfigComparator()
 
         self._sshd_config_path = sshd_config_path if sshd_config_path is not None else self.SSHD_CONFIG_PATH
         self._config_file_paths: List[str] = []
@@ -52,88 +53,7 @@ class SSHDInspector():
             self.extra_in_actual
         Compares the actual parsed sshd_config with a target_sshd_config.
         """
-        actual_config = self.sshd_config
-        self.matching_config = {}
-        self.missing_from_actual = {}
-        self.extra_in_actual = {}
-
-        for target_key, target_value in target_sshd_config.items():
-            if target_key == "Match": 
-                continue 
-
-            if target_key in actual_config:
-                if actual_config[target_key] == target_value:
-                    self.matching_config[target_key] = target_value
-                else:
-                    self.missing_from_actual[target_key] = target_value
-                    self.extra_in_actual[target_key] = actual_config[target_key]
-            else:
-                self.missing_from_actual[target_key] = target_value
-
-        for actual_key, actual_value in actual_config.items():
-            if actual_key == "Match": 
-                continue 
-
-            if actual_key not in target_sshd_config:
-                self.extra_in_actual[actual_key] = actual_value
-
-        actual_matches = actual_config.get("Match", [])
-        target_matches = target_sshd_config.get("Match", [])
-
-        matched_blocks, missing_blocks, extra_blocks = self._compare_match_block_lists(actual_matches, target_matches)
-
-        if matched_blocks != []:
-            self.matching_config["Match"] = matched_blocks
-        if missing_blocks != []:
-            self.missing_from_actual["Match"] = missing_blocks
-        if extra_blocks != []:
-            self.extra_in_actual["Match"] = extra_blocks
-
-
-    def _compare_match_block_lists(self, actual_matches: List[Dict], target_matches: List[Dict]) -> Tuple[List[Dict], List[Dict], List[Dict]]:
-        matched_match_blocks = []
-        missing_match_blocks = []
-        extra_match_blocks = []
-
-        actual_matches_map = {block["criterium"]: block["settings"] for block in actual_matches}
-        target_matches_map = {block["criterium"]: block["settings"] for block in target_matches}
-
-        all_criteria = set(actual_matches_map.keys()) | set(target_matches_map.keys())
-
-        for criterium in all_criteria:
-            actual_settings = actual_matches_map.get(criterium)
-            target_settings = target_matches_map.get(criterium)
-
-            current_missing_settings = {}
-            current_extra_settings = {}
-            current_matched_settings = {}
-
-            all_settings_keys = set(actual_settings.keys() if actual_settings else []) | \
-                                    set(target_settings.keys() if target_settings else [])
-
-            for setting_key in all_settings_keys:
-                actual_setting_value = actual_settings.get(setting_key) if actual_settings else None
-                target_setting_value = target_settings.get(setting_key) if target_settings else None
-
-                if actual_setting_value == target_setting_value:
-                    if actual_setting_value is not None:
-                        current_matched_settings[setting_key] = actual_setting_value
-                else:
-                    if target_setting_value is not None:
-                        current_missing_settings[setting_key] = target_setting_value
-                    if actual_setting_value is not None:
-                        current_extra_settings[setting_key] = actual_setting_value
-
-            if current_matched_settings:
-                matched_match_blocks.append({"criterium": criterium, "settings": current_matched_settings})
-            
-            if current_missing_settings:
-                missing_match_blocks.append({"criterium": criterium, "settings": current_missing_settings})
-            
-            if current_extra_settings:
-                extra_match_blocks.append({"criterium": criterium, "settings": current_extra_settings})
-
-        return matched_match_blocks, missing_match_blocks, extra_match_blocks
+        self.matching_config, self.missing_from_actual, self.extra_in_actual = self._comparator.compare(self.sshd_config, target_sshd_config)
 
 
     # --- CORE CONFIG LOADING ---
@@ -160,38 +80,12 @@ class SSHDInspector():
         Reads, cleanses and parses the main SSHD config file.
         """
 
-        raw_lines = self._read_file(self._sshd_config_path)
-        sanitized_lines = self._cleanse_config_lines(raw_lines)
+        raw_lines = self._file_reader.read_lines(self._sshd_config_path)
+        sanitized_lines = SSHDConfigCleaner.cleanse_lines(raw_lines)
         self._sshd_config = self._parse_sshd_config_lines(sanitized_lines)
 
 
-    # --- FILE HANDLING HELPERS ---
-    def _read_file(self, file_path: str) -> List[str]:
-        """
-        Reads lines from a given file path.
-        Return an empty list if the file is not found or cannot be read.
-        """
-        try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                return file.readlines()
-        except IOError as e:
-            logger.error(f"ERROR: Could not read file '{file_path}': {e}")
-            return []
-
-    @staticmethod
-    def _cleanse_config_lines(raw_lines: List[str]) -> List[str]:
-        """
-        Removes empty lines and comments from a list of raw config lines.
-        """
-
-        lines = [line for line in raw_lines if line.strip()]
-        lines = [line for line in lines if not line.strip().startswith("#")]
-
-        return lines
-
-
     # --- PARSING LOGIC ---
-
     def _parse_sshd_config_lines(self, config_lines: List[str]) -> Dict[str, Any]:
         """
         Parses a list of sanitized sshd_config lines. 
@@ -291,8 +185,8 @@ class SSHDInspector():
         combined_included_config: Dict[str, Any] = {}
 
         for file_path in glob.glob(pattern):
-            raw_lines = self._read_file(file_path)
-            sanitized_lines = self._cleanse_config_lines(raw_lines)
+            raw_lines = self._file_reader.read_lines(file_path)
+            sanitized_lines = SSHDConfigCleaner.cleanse_lines(raw_lines)
             
             parsed_file_config = self._parse_sshd_config_lines(sanitized_lines)
 
@@ -384,3 +278,123 @@ class SSHDInspector():
         }
 
         return match_block
+
+
+class FileConfigReader:
+    """
+    Reads files from file system
+    """
+    def read_lines(self, file_path: str) -> List[str]:
+        """
+        Reads lines from a given file path.
+        Return an empty list if the file is not found or cannot be read.
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return file.readlines()
+        except IOError as e:
+            logger.error(f"ERROR: Could not read file '{file_path}': {e}")
+            return []
+
+class SSHDConfigCleaner:
+    @staticmethod
+    def cleanse_lines(raw_lines: List[str]) -> List[str]:
+        """
+        Removes empty lines and comments from a list of raw config lines.
+        """
+
+        lines = [line for line in raw_lines if line.strip()]
+        lines = [line for line in lines if not line.strip().startswith("#")]
+
+        return lines
+
+
+class SSHDConfigComparator:
+    def compare(self, actual_config: Dict[str, Any], target_sshd_config: Dict[str, Any]) -> Tuple[Dict, Dict, Dict]:
+        """
+        Compare 2 parsed SSHD configuration dictionaries
+        """
+        matching_config = {}
+        missing_from_actual = {}
+        extra_in_actual = {}
+
+        for target_key, target_value in target_sshd_config.items():
+            if target_key == "Match": 
+                continue 
+
+            if target_key in actual_config:
+                if actual_config[target_key] == target_value:
+                    matching_config[target_key] = target_value
+                else:
+                    missing_from_actual[target_key] = target_value
+                    extra_in_actual[target_key] = actual_config[target_key]
+            else:
+                missing_from_actual[target_key] = target_value
+
+        for actual_key, actual_value in actual_config.items():
+            if actual_key == "Match": 
+                continue 
+
+            if actual_key not in target_sshd_config:
+                extra_in_actual[actual_key] = actual_value
+
+        actual_matches = actual_config.get("Match", [])
+        target_matches = target_sshd_config.get("Match", [])
+
+        matched_blocks, missing_blocks, extra_blocks = self._compare_match_block_lists(actual_matches, target_matches)
+
+        if matched_blocks != []:
+            matching_config["Match"] = matched_blocks
+        if missing_blocks != []:
+            missing_from_actual["Match"] = missing_blocks
+        if extra_blocks != []:
+            extra_in_actual["Match"] = extra_blocks
+        
+        return matching_config, missing_from_actual, extra_in_actual
+
+
+    def _compare_match_block_lists(self, actual_matches: List[Dict], target_matches: List[Dict]) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+        matched_match_blocks = []
+        missing_match_blocks = []
+        extra_match_blocks = []
+
+        actual_matches_map = {block["criterium"]: block["settings"] for block in actual_matches}
+        target_matches_map = {block["criterium"]: block["settings"] for block in target_matches}
+
+        all_criteria = set(actual_matches_map.keys()) | set(target_matches_map.keys())
+
+        for criterium in all_criteria:
+            actual_settings = actual_matches_map.get(criterium)
+            target_settings = target_matches_map.get(criterium)
+
+            current_missing_settings = {}
+            current_extra_settings = {}
+            current_matched_settings = {}
+
+            all_settings_keys = set(actual_settings.keys() if actual_settings else []) | \
+                                    set(target_settings.keys() if target_settings else [])
+
+            for setting_key in all_settings_keys:
+                actual_setting_value = actual_settings.get(setting_key) if actual_settings else None
+                target_setting_value = target_settings.get(setting_key) if target_settings else None
+
+                if actual_setting_value == target_setting_value:
+                    if actual_setting_value is not None:
+                        current_matched_settings[setting_key] = actual_setting_value
+                else:
+                    if target_setting_value is not None:
+                        current_missing_settings[setting_key] = target_setting_value
+                    if actual_setting_value is not None:
+                        current_extra_settings[setting_key] = actual_setting_value
+
+            if current_matched_settings:
+                matched_match_blocks.append({"criterium": criterium, "settings": current_matched_settings})
+            
+            if current_missing_settings:
+                missing_match_blocks.append({"criterium": criterium, "settings": current_missing_settings})
+            
+            if current_extra_settings:
+                extra_match_blocks.append({"criterium": criterium, "settings": current_extra_settings})
+
+        return matched_match_blocks, missing_match_blocks, extra_match_blocks
+
