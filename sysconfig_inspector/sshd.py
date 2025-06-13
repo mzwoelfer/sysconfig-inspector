@@ -58,7 +58,7 @@ class SSHDInspector():
         self.extra_in_actual = {}
 
         for target_key, target_value in target_sshd_config.items():
-            if target_key == "Match" or target_key == "Include": 
+            if target_key == "Match": 
                 continue 
 
             if target_key in actual_config:
@@ -71,7 +71,7 @@ class SSHDInspector():
                 self.missing_from_actual[target_key] = target_value
 
         for actual_key, actual_value in actual_config.items():
-            if actual_key == "Match" or actual_key == "Include": 
+            if actual_key == "Match": 
                 continue 
 
             if actual_key not in target_sshd_config:
@@ -80,18 +80,21 @@ class SSHDInspector():
         actual_matches = actual_config.get("Match", [])
         target_matches = target_sshd_config.get("Match", [])
 
-        matching_blocks, missing_blocks, extra_blocks = self._compare_match_block_lists(actual_matches, target_matches)
+        matched_blocks, missing_blocks, extra_blocks = self._compare_match_block_lists(actual_matches, target_matches)
 
-        self.matching_config["Match"] = matching_blocks
-        self.missing_from_actual["Match"] = missing_blocks
-        self.extra_in_actual["Match"] = extra_blocks
+        if matched_blocks != []:
+            self.matching_config["Match"] = matched_blocks
+        if missing_blocks != []:
+            self.missing_from_actual["Match"] = missing_blocks
+        if extra_blocks != []:
+            self.extra_in_actual["Match"] = extra_blocks
 
-    def _compare_match_block_lists(self, actual_matches: List[Dict], target_matches: List[Dict]) -> List[Dict], List[Dict], List[Dict]:
-               matched_match_blocks = []
+
+    def _compare_match_block_lists(self, actual_matches: List[Dict], target_matches: List[Dict]) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+        matched_match_blocks = []
         missing_match_blocks = []
         extra_match_blocks = []
 
-        # Convert lists of match blocks to dictionaries for easier lookup by criterium
         actual_matches_map = {block["criterium"]: block["settings"] for block in actual_matches}
         target_matches_map = {block["criterium"]: block["settings"] for block in target_matches}
 
@@ -109,7 +112,6 @@ class SSHDInspector():
                 current_extra_settings = {}
                 matched_settings = {}
 
-                # Compare settings within the match block
                 all_settings_keys = set(actual_settings.keys() if actual_settings else []) | \
                                     set(target_settings.keys() if target_settings else [])
 
@@ -127,8 +129,7 @@ class SSHDInspector():
                             current_extra_settings[setting_key] = actual_setting_value
 
                 if matched_settings:
-                    # If any settings matched within the block, add a partial match
-                    if matched_match_blocks: # Check if the list exists
+                    if matched_match_blocks: 
                         for block in matched_match_blocks:
                             if block["criterium"] == criterium:
                                 block["settings"].update(matched_settings)

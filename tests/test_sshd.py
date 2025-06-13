@@ -679,10 +679,12 @@ class TestIntegrationTest(BaseSshInspectorTest):
         self.assertEqual(sshd_inspector.sshd_config, expected_output)
 
     def test_large_compare_to_functionality(self):
+        self.maxDiff = None
+
         included_dir_path = self.included_sshd_dir_path
 
         actual_main_content = f"""
-            Include {included_dir_path}/*.conf
+            Include /etc/ssh/sshd_config.d/*.conf
             Port 22
             PubKeyAuthentication yes
             LogLevel INFO
@@ -704,6 +706,7 @@ class TestIntegrationTest(BaseSshInspectorTest):
 
         # --- EXPECTED PARSED ACTUAL CONFIG ---
         target_sshd_config = {
+            "Include": "/etc/ssh/sshd_config.d/*.conf",
             "Port": 22,
             "PubKeyAuthentication": True, 
             "LogLevel": "INFO",
@@ -729,7 +732,6 @@ class TestIntegrationTest(BaseSshInspectorTest):
                     }
                 }
             ],
-            "Include": "/etc/ssh/sshd_config.d/*.conf",
             "Compression": True,
             "ClientAliveInterval": 60, 
             "MaxAuthTries": 5, 
@@ -743,6 +745,7 @@ class TestIntegrationTest(BaseSshInspectorTest):
 
         # --- COMPARISON RESULTS ---
         matching_config = {
+            "Include": "/etc/ssh/sshd_config.d/*.conf",
             "Port": 22, 
             "PubKeyAuthentication": True, 
             "LogLevel": "INFO",
@@ -758,7 +761,6 @@ class TestIntegrationTest(BaseSshInspectorTest):
         }
 
         missing_from_actual = {
-            "Include": "/etc/ssh/sshd_config.d/*.conf",
             "Compression": True,
             "ClientAliveInterval": 60, 
             "MaxAuthTries": 5, 
@@ -780,7 +782,6 @@ class TestIntegrationTest(BaseSshInspectorTest):
         }
 
         extra_in_actual = {
-            "Include": f"{included_dir_path}/*.conf", 
             "PermitRootLogin": "prohibit-password", 
             "AllowTcpForwarding": True, 
             "Match": [
