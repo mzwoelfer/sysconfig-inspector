@@ -684,7 +684,7 @@ class TestIntegrationTest(BaseSshInspectorTest):
         included_dir_path = self.included_sshd_dir_path
 
         actual_main_content = f"""
-            Include /etc/ssh/sshd_config.d/*.conf
+            Include {included_dir_path}/*.conf
             Port 22
             PubKeyAuthentication yes
             LogLevel INFO
@@ -706,7 +706,7 @@ class TestIntegrationTest(BaseSshInspectorTest):
 
         # --- EXPECTED PARSED ACTUAL CONFIG ---
         target_sshd_config = {
-            "Include": "/etc/ssh/sshd_config.d/*.conf",
+            "Include": f"{included_dir_path}/*.conf",
             "Port": 22,
             "PubKeyAuthentication": True, 
             "LogLevel": "INFO",
@@ -745,7 +745,7 @@ class TestIntegrationTest(BaseSshInspectorTest):
 
         # --- COMPARISON RESULTS ---
         matching_config = {
-            "Include": "/etc/ssh/sshd_config.d/*.conf",
+            "Include": f"{included_dir_path}/*.conf",
             "Port": 22, 
             "PubKeyAuthentication": True, 
             "LogLevel": "INFO",
