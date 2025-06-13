@@ -14,14 +14,14 @@ class SSHDInspector():
     SSHD_CONFIG_PATH = '/etc/ssh/sshd_config'
 
     def __init__(self, 
-                 sshd_config_path: Optional[str] = None,
-                 ssh_config_path: Optional[str] = None):
+                 sshd_config_path: Optional[str] = None):
         """
         Initializes the SSHInspector with specified or default configuration paths.
 
         ARGS:
             sshd_config_path (str, optional): sshd_config file
         """
+        self._file_reader = FileConfigReader()
 
         self._sshd_config_path = sshd_config_path if sshd_config_path is not None else self.SSHD_CONFIG_PATH
         self._config_file_paths: List[str] = []
@@ -160,23 +160,10 @@ class SSHDInspector():
         Reads, cleanses and parses the main SSHD config file.
         """
 
-        raw_lines = self._read_file(self._sshd_config_path)
+        raw_lines = self._file_reader.read_lines(self._sshd_config_path)
         sanitized_lines = self._cleanse_config_lines(raw_lines)
         self._sshd_config = self._parse_sshd_config_lines(sanitized_lines)
 
-
-    # --- FILE HANDLING HELPERS ---
-    def _read_file(self, file_path: str) -> List[str]:
-        """
-        Reads lines from a given file path.
-        Return an empty list if the file is not found or cannot be read.
-        """
-        try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                return file.readlines()
-        except IOError as e:
-            logger.error(f"ERROR: Could not read file '{file_path}': {e}")
-            return []
 
     @staticmethod
     def _cleanse_config_lines(raw_lines: List[str]) -> List[str]:
@@ -291,7 +278,7 @@ class SSHDInspector():
         combined_included_config: Dict[str, Any] = {}
 
         for file_path in glob.glob(pattern):
-            raw_lines = self._read_file(file_path)
+            raw_lines = self._file_reader.read_lines(file_path)
             sanitized_lines = self._cleanse_config_lines(raw_lines)
             
             parsed_file_config = self._parse_sshd_config_lines(sanitized_lines)
@@ -384,3 +371,20 @@ class SSHDInspector():
         }
 
         return match_block
+
+
+class FileConfigReader:
+    """
+    Reads files from file system
+    """
+    def read_lines(self, file_path: str) -> List[str]:
+        """
+        Reads lines from a given file path.
+        Return an empty list if the file is not found or cannot be read.
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return file.readlines()
+        except IOError as e:
+            logger.error(f"ERROR: Could not read file '{file_path}': {e}")
+            return []
