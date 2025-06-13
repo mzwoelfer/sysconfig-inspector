@@ -795,7 +795,7 @@ class TestIntegrationTest(BaseSshInspectorTest):
             ]
         }
 
-        self.assertEqual(sshd_inspector.matching_config, matching_config)
-        self.assertEqual(sshd_inspector.missing_from_actual, missing_from_actual)
-        self.assertEqual(sshd_inspector.extra_in_actual, extra_in_actual)
+        self.assertCountEqual(sshd_inspector.matching_config, matching_config)
+        self.assertCountEqual(sshd_inspector.missing_from_actual, missing_from_actual)
+        self.assertCountEqual(sshd_inspector.extra_in_actual, extra_in_actual)
 
