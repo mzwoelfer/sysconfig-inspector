@@ -45,4 +45,4 @@ jobs:
 
       - name: Check 100% coverage
         run: |
-          coverage report --fail-under=100
+          coverage report -m --fail-under=100
