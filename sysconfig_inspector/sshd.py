@@ -80,16 +80,71 @@ class SSHDInspector():
         actual_matches = actual_config.get("Match", [])
         target_matches = target_sshd_config.get("Match", [])
 
-        if actual_matches and target_matches:
-            if actual_matches == target_matches:
-                self.matching_config["Match"] = actual_matches
+        matching_blocks, missing_blocks, extra_blocks = self._compare_match_block_lists(actual_matches, target_matches)
+
+        self.matching_config["Match"] = matching_blocks
+        self.missing_from_actual["Match"] = missing_blocks
+        self.extra_in_actual["Match"] = extra_blocks
+
+    def _compare_match_block_lists(self, actual_matches: List[Dict], target_matches: List[Dict]) -> List[Dict], List[Dict], List[Dict]:
+               matched_match_blocks = []
+        missing_match_blocks = []
+        extra_match_blocks = []
+
+        # Convert lists of match blocks to dictionaries for easier lookup by criterium
+        actual_matches_map = {block["criterium"]: block["settings"] for block in actual_matches}
+        target_matches_map = {block["criterium"]: block["settings"] for block in target_matches}
+
+        all_criteria = set(actual_matches_map.keys()) | set(target_matches_map.keys())
+
+        for criterium in all_criteria:
+            actual_settings = actual_matches_map.get(criterium)
+            target_settings = target_matches_map.get(criterium)
+
+            if actual_settings == target_settings:
+                if actual_settings is not None:
+                    matched_match_blocks.append({"criterium": criterium, "settings": actual_settings})
             else:
-                self.missing_from_actual["Match"] = target_matches
-                self.extra_in_actual["Match"] = actual_matches
-        elif actual_matches:
-            self.extra_in_actual["Match"] = actual_matches
-        elif target_matches:
-            self.missing_from_actual["Match"] = target_matches
+                current_missing_settings = {}
+                current_extra_settings = {}
+                matched_settings = {}
+
+                # Compare settings within the match block
+                all_settings_keys = set(actual_settings.keys() if actual_settings else []) | \
+                                    set(target_settings.keys() if target_settings else [])
+
+                for setting_key in all_settings_keys:
+                    actual_setting_value = actual_settings.get(setting_key) if actual_settings else None
+                    target_setting_value = target_settings.get(setting_key) if target_settings else None
+
+                    if actual_setting_value == target_setting_value:
+                        if actual_setting_value is not None:
+                            matched_settings[setting_key] = actual_setting_value
+                    else:
+                        if target_setting_value is not None:
+                            current_missing_settings[setting_key] = target_setting_value
+                        if actual_setting_value is not None:
+                            current_extra_settings[setting_key] = actual_setting_value
+
+                if matched_settings:
+                    # If any settings matched within the block, add a partial match
+                    if matched_match_blocks: # Check if the list exists
+                        for block in matched_match_blocks:
+                            if block["criterium"] == criterium:
+                                block["settings"].update(matched_settings)
+                                break
+                        else:
+                            matched_match_blocks.append({"criterium": criterium, "settings": matched_settings})
+                    else:
+                        matched_match_blocks.append({"criterium": criterium, "settings": matched_settings})
+
+
+                if current_missing_settings:
+                    missing_match_blocks.append({"criterium": criterium, "settings": current_missing_settings})
+                if current_extra_settings:
+                    extra_match_blocks.append({"criterium": criterium, "settings": current_extra_settings})
+            
+        return matched_match_blocks, missing_match_blocks, extra_match_blocks
 
 
     # --- CORE CONFIG LOADING ---
@@ -266,7 +321,7 @@ class SSHDInspector():
 
         return combined_included_config
 
-    def _parse_directive_line(self, line: str) -> Tuple[ſtr, Any]:
+    def _parse_directive_line(self, line: str) -> Tuple[str, Any]:
         """
         Parses a generic SSH config line (key-value pair).
         Casts integers and booleans.
