@@ -57,25 +57,25 @@ class SSHDInspector():
         self.missing_from_actual = {}
         self.extra_in_actual = {}
 
-        for key, value in target_sshd_config.items():
-            if key == "Match" or key == "Include": 
+        for target_key, target_value in target_sshd_config.items():
+            if target_key == "Match" or target_key == "Include": 
                 continue 
 
-            if key in actual_config:
-                if actual_config[key] == value:
-                    self.matching_config[key] = value
+            if target_key in actual_config:
+                if actual_config[target_key] == target_value:
+                    self.matching_config[target_key] = target_value
                 else:
-                    self.missing_from_actual[key] = value
-                    self.extra_in_actual[key] = actual_config[key]
+                    self.missing_from_actual[target_key] = target_value
+                    self.extra_in_actual[target_key] = actual_config[target_key]
             else:
-                self.missing_from_actual[key] = value
+                self.missing_from_actual[target_key] = target_value
 
-        for key, value in actual_config.items():
-            if key == "Match" or key == "Include": 
+        for actual_key, actual_value in actual_config.items():
+            if actual_key == "Match" or actual_key == "Include": 
                 continue 
 
-            if key not in target_sshd_config:
-                self.extra_in_actual[key] = value
+            if actual_key not in target_sshd_config:
+                self.extra_in_actual[actual_key] = actual_value
 
         actual_matches = actual_config.get("Match", [])
         target_matches = target_sshd_config.get("Match", [])
@@ -91,23 +91,8 @@ class SSHDInspector():
         elif target_matches:
             self.missing_from_actual["Match"] = target_matches
 
-        actual_include = actual_config.get("Include")
-        target_include = target_sshd_config.get("Include")
-
-        if actual_include and target_include:
-            if actual_include == target_include:
-                self.matching_config["Include"] = actual_include
-            else:
-                self.missing_from_actual["Include"] = target_include
-                self.extra_in_actual["Include"] = actual_include
-        elif actual_include:
-            self.extra_in_actual["Include"] = actual_include
-        elif target_include:
-            self.missing_from_actual["Include"] = target_include
-
 
     # --- CORE CONFIG LOADING ---
-
     def _discover_and_load_configs(self) -> None:
         """
         Discovers SSHD config files and loadsthe sshd_config.
