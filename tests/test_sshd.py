@@ -87,6 +87,21 @@ class TestSSHDInspector(BaseSshInspectorTest):
 class TestFileReadOperations(BaseSshInspectorTest):
     def test_sshd_config_file_unreadable(self):
         """
+        Tests file not found.
+        """
+        unreadable_file_path = self._build_temp_path(
+            '/etc/ssh/non_existant_sshd_config'
+        )
+
+        with self.assertLogs(_sshd_inspector_logger, level='ERROR') as cm:
+            sshd_inspector = SSHDInspector(
+                sshd_config_path=unreadable_file_path
+            )
+
+            self.assertIn("file not found", cm.output[0])
+
+    def test_sshd_config_file_unreadable(self):
+        """
         Tests when sshd_config file exists but is unreadable (IOError).
         Expects an empty config and an ERROR log message.
         """
