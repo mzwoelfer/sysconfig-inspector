@@ -161,20 +161,10 @@ class SSHDInspector():
         """
 
         raw_lines = self._file_reader.read_lines(self._sshd_config_path)
-        sanitized_lines = self._cleanse_config_lines(raw_lines)
+        sanitized_lines = SSHDConfigCleaner.cleanse_lines(raw_lines)
         self._sshd_config = self._parse_sshd_config_lines(sanitized_lines)
 
 
-    @staticmethod
-    def _cleanse_config_lines(raw_lines: List[str]) -> List[str]:
-        """
-        Removes empty lines and comments from a list of raw config lines.
-        """
-
-        lines = [line for line in raw_lines if line.strip()]
-        lines = [line for line in lines if not line.strip().startswith("#")]
-
-        return lines
 
 
     # --- PARSING LOGIC ---
@@ -279,7 +269,7 @@ class SSHDInspector():
 
         for file_path in glob.glob(pattern):
             raw_lines = self._file_reader.read_lines(file_path)
-            sanitized_lines = self._cleanse_config_lines(raw_lines)
+            sanitized_lines = SSHDConfigCleaner.cleanse_lines(raw_lines)
             
             parsed_file_config = self._parse_sshd_config_lines(sanitized_lines)
 
@@ -388,3 +378,15 @@ class FileConfigReader:
         except IOError as e:
             logger.error(f"ERROR: Could not read file '{file_path}': {e}")
             return []
+
+class SSHDConfigCleaner:
+    @staticmethod
+    def cleanse_lines(raw_lines: List[str]) -> List[str]:
+        """
+        Removes empty lines and comments from a list of raw config lines.
+        """
+
+        lines = [line for line in raw_lines if line.strip()]
+        lines = [line for line in lines if not line.strip().startswith("#")]
+
+        return lines
