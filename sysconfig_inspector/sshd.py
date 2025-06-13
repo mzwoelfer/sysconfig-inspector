@@ -5,16 +5,13 @@ from typing import Any, Dict, List, Tuple, Optional
 
 logger = logging.getLogger(__name__)
 
-class SSHInspector():
+class SSHDInspector():
     """
-    Parses and inspects SSH (sshd_config) configuration files.
-    Applies standard SSH configuration rules.
-    E.g. "First value wins" - for duplicates and additive "Match" blocks.
+    Parses and inspects SSHD (sshd_config) configuration files.
     """
 
     # --- CONSTANTS ---
     SSHD_CONFIG_PATH = '/etc/ssh/sshd_config'
-    SSH_CONFIG_PATH = '/etc/ssh/ssh_config'
 
     def __init__(self, 
                  sshd_config_path: Optional[str] = None,
@@ -24,11 +21,9 @@ class SSHInspector():
 
         ARGS:
             sshd_config_path (str, optional): sshd_config file
-            ssh_config_path (str, optional): ssh_config
         """
 
         self._sshd_config_path = sshd_config_path if sshd_config_path is not None else self.SSHD_CONFIG_PATH
-        self._ssh_config_path = ssh_config_path if ssh_config_path is not None else self.SSH_CONFIG_PATH
         self._config_file_paths: List[str] = []
         self._sshd_config: Dict [str, Any] = {}
 
@@ -55,31 +50,108 @@ class SSHInspector():
             self.matching_config
             self.missing_from_actual
             self.extra_in_actual
+        Compares the actual parsed sshd_config with a target_sshd_config.
         """
-        self.matching_config = { 'Port': 22 }
+        actual_config = self.sshd_config
+        self.matching_config = {}
+        self.missing_from_actual = {}
+        self.extra_in_actual = {}
 
+        for target_key, target_value in target_sshd_config.items():
+            if target_key == "Match": 
+                continue 
+
+            if target_key in actual_config:
+                if actual_config[target_key] == target_value:
+                    self.matching_config[target_key] = target_value
+                else:
+                    self.missing_from_actual[target_key] = target_value
+                    self.extra_in_actual[target_key] = actual_config[target_key]
+            else:
+                self.missing_from_actual[target_key] = target_value
+
+        for actual_key, actual_value in actual_config.items():
+            if actual_key == "Match": 
+                continue 
+
+            if actual_key not in target_sshd_config:
+                self.extra_in_actual[actual_key] = actual_value
+
+        actual_matches = actual_config.get("Match", [])
+        target_matches = target_sshd_config.get("Match", [])
+
+        matched_blocks, missing_blocks, extra_blocks = self._compare_match_block_lists(actual_matches, target_matches)
+
+        if matched_blocks != []:
+            self.matching_config["Match"] = matched_blocks
+        if missing_blocks != []:
+            self.missing_from_actual["Match"] = missing_blocks
+        if extra_blocks != []:
+            self.extra_in_actual["Match"] = extra_blocks
+
+
+    def _compare_match_block_lists(self, actual_matches: List[Dict], target_matches: List[Dict]) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+        matched_match_blocks = []
+        missing_match_blocks = []
+        extra_match_blocks = []
+
+        actual_matches_map = {block["criterium"]: block["settings"] for block in actual_matches}
+        target_matches_map = {block["criterium"]: block["settings"] for block in target_matches}
+
+        all_criteria = set(actual_matches_map.keys()) | set(target_matches_map.keys())
+
+        for criterium in all_criteria:
+            actual_settings = actual_matches_map.get(criterium)
+            target_settings = target_matches_map.get(criterium)
+
+            current_missing_settings = {}
+            current_extra_settings = {}
+            current_matched_settings = {}
+
+            all_settings_keys = set(actual_settings.keys() if actual_settings else []) | \
+                                    set(target_settings.keys() if target_settings else [])
+
+            for setting_key in all_settings_keys:
+                actual_setting_value = actual_settings.get(setting_key) if actual_settings else None
+                target_setting_value = target_settings.get(setting_key) if target_settings else None
+
+                if actual_setting_value == target_setting_value:
+                    if actual_setting_value is not None:
+                        current_matched_settings[setting_key] = actual_setting_value
+                else:
+                    if target_setting_value is not None:
+                        current_missing_settings[setting_key] = target_setting_value
+                    if actual_setting_value is not None:
+                        current_extra_settings[setting_key] = actual_setting_value
+
+            if current_matched_settings:
+                matched_match_blocks.append({"criterium": criterium, "settings": current_matched_settings})
+            
+            if current_missing_settings:
+                missing_match_blocks.append({"criterium": criterium, "settings": current_missing_settings})
+            
+            if current_extra_settings:
+                extra_match_blocks.append({"criterium": criterium, "settings": current_extra_settings})
+
+        return matched_match_blocks, missing_match_blocks, extra_match_blocks
 
 
     # --- CORE CONFIG LOADING ---
-
     def _discover_and_load_configs(self) -> None:
         """
-        Discovers SSH(D) config files and loadsthe sshd_config.
+        Discovers SSHD config files and loadsthe sshd_config.
         """
         self._discover_config_files()
         self._load_and_parse_sshd_config()
     
     def _discover_config_files(self) -> None:
         """
-        Discovers SSH(D) configurations files.
+        Discovers SSHD configurations files.
         """
         found_files: List[str] = []
 
         if os.path.isfile(self._sshd_config_path):
             found_files.append(self._sshd_config_path)
-
-        if os.path.isfile(self._ssh_config_path):
-            found_files.append(self._ssh_config_path)
 
         self._config_file_paths = found_files
 
@@ -102,9 +174,6 @@ class SSHInspector():
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 return file.readlines()
-        except FileNotFoundError:
-            logger.warning(f"Config file not found: '{file_path}'. Skipping")
-            return []
         except IOError as e:
             logger.error(f"ERROR: Could not read file '{file_path}': {e}")
             return []
@@ -141,7 +210,8 @@ class SSHInspector():
 
             if directive_type == 'match':
                 if current_match_criteria:
-                    match_blocks.append(self._build_match_block(current_match_criteria, current_match_lines))
+                    block = self._build_match_block(current_match_criteria, current_match_lines)
+                    match_blocks.append(block)
 
                 current_match_criteria = self._extract_match_criteria(line)
                 current_match_lines = []
@@ -238,7 +308,7 @@ class SSHInspector():
 
         return combined_included_config
 
-    def _parse_directive_line(self, line: str) -> Tuple[ſtr, Any]:
+    def _parse_directive_line(self, line: str) -> Tuple[str, Any]:
         """
         Parses a generic SSH config line (key-value pair).
         Casts integers and booleans.
@@ -257,14 +327,16 @@ class SSHInspector():
             value_raw = parts[1].strip().strip('"')
 
             try:
-                value: Any = int(value_raw)
+                value = int(value_raw)
             except ValueError:
                 if value_raw.lower() == "yes":
                     value = True
                 elif value_raw.lower() == "no":
                     value = False
                 else:
+                    # keep string: e.g. PermitRootLogin prohibit-password
                     value = value_raw
+
             return key, value
         elif len(parts) == 1:
             return parts[0].strip(), None
@@ -305,7 +377,7 @@ class SSHInspector():
             key, value = self._parse_directive_line(line)
             if key:
                 settings[key] = value
-
+        
         match_block = {
             "criterium": criteria,
             "settings": settings
