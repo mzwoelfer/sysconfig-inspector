@@ -115,10 +115,6 @@ class SSHDInspector():
                 current_match_lines.append(line)
                 continue
 
-            if directive_type == 'include':
-                self._handle_include_directive(line, parsed_config, match_blocks)
-                continue
-
             self._handle_global_directive(line, parsed_config)
 
             
@@ -147,27 +143,6 @@ class SSHDInspector():
 
         return current_match_criteria
 
-
-    def _handle_include_directive(self, line: str, parsed_config: Dict[str, Any], match_blocks: List[Dict[str, Any]]) -> None:
-        """
-        Processes an 'Include' directive.
-        Parses included files and merges into existing sshd config
-        """
-        parts = line.split(None, 1)
-        include_pattern = parts[1].strip()
-
-        # 'Include' directive can only appear once in the top-level config 
-        if "Include" not in parsed_config:
-            parsed_config["Include"] = include_pattern
-
-        included_data = self._parse_included_files(include_pattern)
-
-        if "Match" in included_data:
-            match_blocks.extend(included_data.pop("Match"))
-
-        for key, value in included_data.items():
-            if key not in parsed_config:
-                parsed_config[key] = value
 
     def _handle_global_directive(self, line: str, parsed_config: Dict[str, Any]) -> None:
         """
