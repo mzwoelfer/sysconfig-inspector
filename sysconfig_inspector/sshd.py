@@ -115,10 +115,6 @@ class SSHDInspector():
                 current_match_lines.append(line)
                 continue
 
-            if directive_type == 'include':
-                self._handle_include_directive(line, parsed_config, match_blocks)
-                continue
-
             self._handle_global_directive(line, parsed_config)
 
             
@@ -148,27 +144,6 @@ class SSHDInspector():
         return current_match_criteria
 
 
-    def _handle_include_directive(self, line: str, parsed_config: Dict[str, Any], match_blocks: List[Dict[str, Any]]) -> None:
-        """
-        Processes an 'Include' directive.
-        Parses included files and merges into existing sshd config
-        """
-        parts = line.split(None, 1)
-        include_pattern = parts[1].strip()
-
-        # 'Include' directive can only appear once in the top-level config 
-        if "Include" not in parsed_config:
-            parsed_config["Include"] = include_pattern
-
-        included_data = self._parse_included_files(include_pattern)
-
-        if "Match" in included_data:
-            match_blocks.extend(included_data.pop("Match"))
-
-        for key, value in included_data.items():
-            if key not in parsed_config:
-                parsed_config[key] = value
-
     def _handle_global_directive(self, line: str, parsed_config: Dict[str, Any]) -> None:
         """
         Parses a sshd config line.
@@ -176,31 +151,6 @@ class SSHDInspector():
         key, value = self._parse_directive_line(line)
         if key and key not in parsed_config:
             parsed_config[key] = value
-
-    def _parse_included_files(self, pattern: str) -> Dict[str, Any]:
-        """
-        Reads and parses configuration from files matching a given glob pattern.
-        Handles nested 'Include' directives through recursion.
-        """
-        combined_included_config: Dict[str, Any] = {}
-
-        for file_path in glob.glob(pattern):
-            raw_lines = self._file_reader.read_lines(file_path)
-            sanitized_lines = SSHDConfigCleaner.cleanse_lines(raw_lines)
-            
-            parsed_file_config = self._parse_sshd_config_lines(sanitized_lines)
-
-            if "Match" in parsed_file_config:
-                included_matches = parsed_file_config.pop("Match")
-                if "Match" not in combined_included_config:
-                    combined_included_config["Match"] = []
-                combined_included_config["Match"].extend(included_matches)
-
-            for key, value in parsed_file_config.items():
-                if key not in combined_included_config:
-                    combined_included_config[key] = value
-
-        return combined_included_config
 
     def _parse_directive_line(self, line: str) -> Tuple[str, Any]:
         """
