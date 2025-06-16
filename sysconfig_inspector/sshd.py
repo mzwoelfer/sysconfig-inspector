@@ -152,31 +152,6 @@ class SSHDInspector():
         if key and key not in parsed_config:
             parsed_config[key] = value
 
-    def _parse_included_files(self, pattern: str) -> Dict[str, Any]:
-        """
-        Reads and parses configuration from files matching a given glob pattern.
-        Handles nested 'Include' directives through recursion.
-        """
-        combined_included_config: Dict[str, Any] = {}
-
-        for file_path in glob.glob(pattern):
-            raw_lines = self._file_reader.read_lines(file_path)
-            sanitized_lines = SSHDConfigCleaner.cleanse_lines(raw_lines)
-            
-            parsed_file_config = self._parse_sshd_config_lines(sanitized_lines)
-
-            if "Match" in parsed_file_config:
-                included_matches = parsed_file_config.pop("Match")
-                if "Match" not in combined_included_config:
-                    combined_included_config["Match"] = []
-                combined_included_config["Match"].extend(included_matches)
-
-            for key, value in parsed_file_config.items():
-                if key not in combined_included_config:
-                    combined_included_config[key] = value
-
-        return combined_included_config
-
     def _parse_directive_line(self, line: str) -> Tuple[str, Any]:
         """
         Parses a generic SSH config line (key-value pair).
