@@ -223,8 +223,7 @@ class SSHDInspector():
                 settings[key] = value
         
         match_block = {
-            "criterium": criteria,
-            "settings": settings
+            criteria: settings
         }
 
         return match_block
@@ -308,8 +307,8 @@ class SSHDConfigComparator:
         missing_match_blocks = []
         extra_match_blocks = []
 
-        actual_matches_map = {block["criterium"]: block["settings"] for block in actual_matches}
-        target_matches_map = {block["criterium"]: block["settings"] for block in target_matches}
+        actual_matches_map = {list(block.keys())[0]: list(block.values())[0] for block in actual_matches}
+        target_matches_map = {list(block.keys())[0]: list(block.values())[0] for block in target_matches}
 
         all_criteria = set(actual_matches_map.keys()) | set(target_matches_map.keys())
 
@@ -338,13 +337,13 @@ class SSHDConfigComparator:
                         current_extra_settings[setting_key] = actual_setting_value
 
             if current_matched_settings:
-                matched_match_blocks.append({"criterium": criterium, "settings": current_matched_settings})
+                matched_match_blocks.append({criterium: current_matched_settings})
             
             if current_missing_settings:
-                missing_match_blocks.append({"criterium": criterium, "settings": current_missing_settings})
+                missing_match_blocks.append({criterium: current_missing_settings})
             
             if current_extra_settings:
-                extra_match_blocks.append({"criterium": criterium, "settings": current_extra_settings})
+                extra_match_blocks.append({criterium: current_extra_settings})
 
         return matched_match_blocks, missing_match_blocks, extra_match_blocks
 

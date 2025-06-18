@@ -71,8 +71,7 @@ class TestIncludesFunctionality(BaseSshInspectorTest):
             "Include": f"{self.included_sshd_dir_path}/*.conf", 
             "Match": [
                 {
-                    "criterium": "User testuser",
-                    "settings": {
+                    "User testuser": {
                         "PermitRootLogin": False,
                         "PasswordAuthentication": True
                     }
