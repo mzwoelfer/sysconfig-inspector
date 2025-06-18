@@ -151,15 +151,13 @@ class TestIntegrationTest(BaseSshInspectorTest):
             "X11Forwarding": False,
             "Match": [
                 {
-                    "criterium": "user dummy-user",
-                    "settings": {
+                    "user dummy-user": {
                         "ChrootDirectory": "/home/user/dummy",
                     }
 
                 },
                 {
-                    "criterium": "address 8.8.8.8/8,9.9.9.9/8",
-                    "settings": {
+                    "address 8.8.8.8/8,9.9.9.9/8": {
                         "PubKeyAuthentication": True,
                         "ClientAliveCountMax": 3
                     }
@@ -207,22 +205,19 @@ class TestIntegrationTest(BaseSshInspectorTest):
             "LogLevel": "INFO",
             "Match": [
                 {
-                    "criterium": "User admin",
-                    "settings": {
+                    "User admin": {
                         "PermitRootLogin": False, 
                         "AllowAgentForwarding": True 
                     }
                 },
                 {
-                    "criterium": "Address 192.168.1.0/24",
-                    "settings": {
+                    "Address 192.168.1.0/24": {
                         "ClientAliveInterval": 60,
                         "MaxAuthTries": 3
                     }
                 },
                 {
-                    "criterium": "Group developers",
-                    "settings": {
+                    "Group developers": {
                         "ForceCommand": "/usr/bin/git-shell"
                     }
                 }
@@ -246,8 +241,7 @@ class TestIntegrationTest(BaseSshInspectorTest):
             "LogLevel": "INFO",
             "Match": [
                 {
-                    "criterium": "Address 192.168.1.0/24",
-                    "settings": {
+                    "Address 192.168.1.0/24": {
                         "ClientAliveInterval": 60,
                         "MaxAuthTries": 3
                     }
@@ -261,15 +255,13 @@ class TestIntegrationTest(BaseSshInspectorTest):
             "MaxAuthTries": 5, 
             "Match": [
                 {
-                    "criterium": "User admin",
-                    "settings": {
+                    "User admin": {
                         "PermitRootLogin": False, 
                         "AllowAgentForwarding": True 
                     }
                 },
                 {
-                    "criterium": "Group developers", 
-                    "settings": {
+                    "Group developers": {
                         "ForceCommand": "/usr/bin/git-shell"
                     }
                 }
@@ -281,8 +273,7 @@ class TestIntegrationTest(BaseSshInspectorTest):
             "AllowTcpForwarding": True, 
             "Match": [
                 {
-                    "criterium": "User admin",
-                    "settings": {
+                    "User admin": {
                         "PermitRootLogin": True,
                         "X11Forwarding": False
                     }

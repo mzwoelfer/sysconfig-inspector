@@ -94,8 +94,7 @@ class TestSSHDInspectorComparison(BaseSshInspectorTest):
         target_sshd_config = {
             "Match": [
                 {
-                    "criterium": "address 8.8.8.8/8,9.9.9.9/8",
-                    "settings": {
+                    "address 8.8.8.8/8,9.9.9.9/8": {
                         "PubKeyAuthentication": True
                     }
                 }
@@ -138,8 +137,7 @@ class TestSSHDInspectorComparison(BaseSshInspectorTest):
         {
             "Match": [
                 {
-                    "criterium": "address 8.8.8.8/8,9.9.9.9/8",
-                    "settings": {
+                    "address 8.8.8.8/8,9.9.9.9/8": {
                         "PubKeyAuthentication": False
                     }
                 }
@@ -158,8 +156,7 @@ class TestSSHDInspectorComparison(BaseSshInspectorTest):
         target_sshd_config = {
             "Match": [
                 {
-                    "criterium": "address 8.8.8.8/8,9.9.9.9/8",
-                    "settings": {
+                    "address 8.8.8.8/8,9.9.9.9/8": {
                         "PubKeyAuthentication": False
                     }
                 }
@@ -189,8 +186,7 @@ class TestSSHDInspectorComparison(BaseSshInspectorTest):
         target_sshd_config = {
             "Match": [
                 {
-                    "criterium": "address 8.8.8.8/8,9.9.9.9/8",
-                    "settings": {
+                    "address 8.8.8.8/8,9.9.9.9/8": {
                         "PubKeyAuthentication": True
                     }
                 }
@@ -209,8 +205,7 @@ class TestSSHDInspectorComparison(BaseSshInspectorTest):
         {
             "Match": [
                 {
-                    "criterium": "address 8.8.8.8/8,9.9.9.9/8",
-                    "settings": {
+                    "address 8.8.8.8/8,9.9.9.9/8": {
                         "PubKeyAuthentication": False
                     }
                 }
@@ -231,8 +226,7 @@ class TestSSHDInspectorComparison(BaseSshInspectorTest):
         target_sshd_config = {
             "Match": [
                 {
-                    "criterium": "address 8.8.8.8/8,9.9.9.9/8",
-                    "settings": {
+                    "address 8.8.8.8/8,9.9.9.9/8": {
                         "PubKeyAuthentication": True
                     }
                 }
@@ -253,8 +247,7 @@ class TestSSHDInspectorComparison(BaseSshInspectorTest):
         {
             "Match": [
                 {
-                    "criterium": "User testuser",
-                    "settings": {
+                    "User testuser": {
                         "PermitRootLogin": False,
                         "PasswordAuthentication": True,
                     }

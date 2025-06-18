@@ -132,9 +132,8 @@ class TestParsing(BaseSshInspectorTest):
         expected_output = {
             "Match": [
                 {
-                    "criterium": "address 8.8.8.8/8,9.9.9.9/8",
-                    "settings": {
-                        "ClientAliveCountMax": 0
+                    "address 8.8.8.8/8,9.9.9.9/8": {
+                            "ClientAliveCountMax": 0
                     }
                 }
             ]
@@ -163,15 +162,13 @@ class TestParsing(BaseSshInspectorTest):
         expected_output = {
             "Match": [
                 {
-                    "criterium": "address 8.8.8.8/8,9.9.9.9/8",
-                    "settings": {
+                    "address 8.8.8.8/8,9.9.9.9/8": {
                         "PubKeyAuthentication": True
                     }
                 },
                 {
-                    "criterium": "User admin",
-                    "settings": {
-                        "X11Forwarding": True
+                    "User admin": {
+                            "X11Forwarding": True
                     }
                 }
             ]
